@@ -1,4 +1,5 @@
-# lab7
+# Meal Muse
+Figma Link: https://www.figma.com/design/YpDQ6ieMUlKikz0j9y4lXp/Meal-Muse?node-id=0-1&t=6c6xuC519JQHdVsl-1
 
 A new Flutter project.
 
