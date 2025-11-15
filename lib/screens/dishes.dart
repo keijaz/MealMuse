@@ -1,6 +1,7 @@
+// dishes.dart
 import 'package:flutter/material.dart';
 import 'home.dart';
-import 'api_service.dart'; // Add this import
+import 'api_service.dart';
 import 'recipe.dart';
 
 // Define the primary color based on the hex code #5C8A94
@@ -42,7 +43,9 @@ class RecipeApp extends StatelessWidget {
 
 // --- 1. The Filter Screen (Updated) ---
 class FilterScreen extends StatefulWidget {
-  const FilterScreen({super.key});
+  final Function(Map<String, dynamic>) onFiltersApplied;
+  
+  const FilterScreen({super.key, required this.onFiltersApplied});
 
   @override
   State<FilterScreen> createState() => _FilterScreenState();
@@ -50,35 +53,33 @@ class FilterScreen extends StatefulWidget {
 
 class _FilterScreenState extends State<FilterScreen> {
   // Data for the filter categories
-  final List<String> courses = [
-    'Appetizer / Starter',
-    'Soup',
-    'Salad',
-    'First Course',
-    'Main Course',
-    'Cheese Course',
-    'Dessert'
+  final List<String> sortOptions = [
+    'popularity',
+    'healthiness',
+    'time',
+    'random'
   ];
-  final List<String> cuisines = [
+  
+  final List<String> cuisineOptions = [
+    'American',
+    'British',
+    'Cajun',
+    'Caribbean',
     'Chinese',
-    'Japanese',
-    'Thai',
+    'European',
     'Indian',
+    'Italian',
     'Korean',
-    'Vietnamese',
-    'Indonesian',
-    'Malaysian',
-    'Filipino',
-    'Taiwanese'
+    'Middle Eastern'
   ];
 
-  // State to track selected items for multi-selection
-  Set<String> selectedCourses = {'Appetizer / Starter'};
-  Set<String> selectedCuisines = {'Thai', 'Chinese'};
+  // State to track selected items
+  String selectedSort = 'popularity';
+  Set<String> selectedCuisines = {};
 
   // Helper function to build a list of selectable filter items
   Widget _buildFilterSection(
-      String title, List<String> items, Set<String> selectedItems) {
+      String title, List<String> items, bool isSingleSelection) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -97,14 +98,21 @@ class _FilterScreenState extends State<FilterScreen> {
           spacing: 10.0,
           runSpacing: 10.0,
           children: items.map((item) {
-            final isSelected = selectedItems.contains(item);
+            final isSelected = isSingleSelection 
+                ? selectedSort == item
+                : selectedCuisines.contains(item);
+                
             return GestureDetector(
               onTap: () {
                 setState(() {
-                  if (isSelected) {
-                    selectedItems.remove(item);
+                  if (isSingleSelection) {
+                    selectedSort = item;
                   } else {
-                    selectedItems.add(item);
+                    if (isSelected) {
+                      selectedCuisines.remove(item);
+                    } else {
+                      selectedCuisines.add(item);
+                    }
                   }
                 });
               },
@@ -132,6 +140,22 @@ class _FilterScreenState extends State<FilterScreen> {
         const SizedBox(height: 10.0),
       ],
     );
+  }
+
+  void _applyFilters() {
+    final filters = {
+      'sort': selectedSort,
+      'cuisines': selectedCuisines.toList(),
+    };
+    widget.onFiltersApplied(filters);
+    Navigator.pop(context);
+  }
+
+  void _resetFilters() {
+    setState(() {
+      selectedSort = 'popularity';
+      selectedCuisines.clear();
+    });
   }
 
   @override
@@ -178,9 +202,45 @@ class _FilterScreenState extends State<FilterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            _buildFilterSection('Course', courses, selectedCourses),
+            _buildFilterSection('Sort By', sortOptions, true),
             const SizedBox(height: 10.0),
-            _buildFilterSection('Cuisine', cuisines, selectedCuisines),
+            _buildFilterSection('Cuisine', cuisineOptions, false),
+            
+            // Apply and Reset Buttons
+            const SizedBox(height: 40.0),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _resetFilters,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[300],
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                    ),
+                    child: const Text('Reset'),
+                  ),
+                ),
+                const SizedBox(width: 16.0),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _applyFilters,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                    ),
+                    child: const Text('Apply Filters'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -201,6 +261,12 @@ class _RecipesScreenState extends State<RecipesScreen> {
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
+  
+  // Filter state
+  Map<String, dynamic> _currentFilters = {
+    'sort': 'popularity',
+    'cuisines': [],
+  };
 
   @override
   void initState() {
@@ -208,24 +274,47 @@ class _RecipesScreenState extends State<RecipesScreen> {
     _fetchRecipes();
   }
 
-  Future<void> _fetchRecipes() async {
+  Future<void> _fetchRecipes({Map<String, dynamic>? filters}) async {
     setState(() {
       _isLoading = true;
       _hasError = false;
     });
 
     try {
-      final recipes = await ApiService.fetchRecipesByIngredients(
-        number: 10,
-        ranking: 1,
-        ignorePantry: false, // Set to false as requested
-      );
+      List<dynamic> recipes;
+      
+      if (filters != null && (filters['cuisines'] as List).isNotEmpty) {
+        print('Using complexSearch with filters: $filters');
+        // Use complexSearch API when filters are applied
+        recipes = await ApiService.fetchRecipesWithComplexSearch(
+          sort: filters['sort'] ?? 'popularity',
+          cuisines: List<String>.from(filters['cuisines'] ?? []),
+          number: 10,
+        );
+      } else {
+        print('Using findByIngredients (no cuisine filters)');
+        // Use findByIngredients API when no cuisine filters
+        recipes = await ApiService.fetchRecipesByIngredients(
+          number: 10,
+          ranking: 1,
+          ignorePantry: false,
+        );
+      }
+      
+      print('Received ${recipes.length} recipes');
+      if (recipes.isNotEmpty) {
+        print('First recipe: ${recipes[0]}');
+      }
       
       setState(() {
         _recipes = recipes;
         _isLoading = false;
+        if (filters != null) {
+          _currentFilters = filters;
+        }
       });
     } catch (e) {
+      print('Error in _fetchRecipes: $e');
       setState(() {
         _isLoading = false;
         _hasError = true;
@@ -237,19 +326,29 @@ class _RecipesScreenState extends State<RecipesScreen> {
   void _navigateToFilterScreen(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const FilterScreen()),
+      MaterialPageRoute(
+        builder: (context) => FilterScreen(
+          onFiltersApplied: (filters) {
+            _fetchRecipes(filters: filters);
+          },
+        ),
+      ),
     );
   }
 
-  // UPDATED: Navigation method to RecipeDetailScreen
+  void _clearFilters() {
+    _fetchRecipes(filters: {
+      'sort': 'popularity',
+      'cuisines': [],
+    });
+  }
+
   void _navigateToRecipeDetail(Map<String, dynamic> recipe) {
-    // Extract recipe ID - handle different possible field names
     final recipeId = recipe['id']?.toString() ?? '';
     
     if (recipeId.isEmpty) {
-      // Show error if no recipe ID found
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Recipe ID not found'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 2),
@@ -263,21 +362,26 @@ class _RecipesScreenState extends State<RecipesScreen> {
       MaterialPageRoute(
         builder: (context) => RecipeDetailScreen(
           recipe: recipe,
-          recipeId: recipeId, // Pass the recipeId parameter
+          recipeId: recipeId,
         ),
       ),
     );
   }
 
   Widget _buildRecipeCard(Map<String, dynamic> recipe) {
+    // Handle different response formats
+    final String recipeTitle = recipe['title'] ?? 'Untitled Recipe';
+    final String imageUrl = recipe['image'] ?? 'https://via.placeholder.com/100x100';
+    final int? missedIngredientCount = recipe['missedIngredientCount'];
+    final int? readyInMinutes = recipe['readyInMinutes'];
+    final int? healthScore = recipe['healthScore'];
+    final int? aggregateLikes = recipe['aggregateLikes'];
+
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: GestureDetector(
-        onTap: () {
-          // UPDATED: Use the new navigation method
-          _navigateToRecipeDetail(recipe);
-        },
+        onTap: () => _navigateToRecipeDetail(recipe),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Row(
@@ -287,7 +391,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  recipe['image'] ?? 'https://via.placeholder.com/100x100',
+                  imageUrl,
                   width: 80,
                   height: 80,
                   fit: BoxFit.cover,
@@ -308,7 +412,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      recipe['title'] ?? 'Untitled Recipe',
+                      recipeTitle,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -317,34 +421,94 @@ class _RecipesScreenState extends State<RecipesScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'Missing ingredients: ${recipe['missedIngredientCount'] ?? 0}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+                    
+                    // Show information based on available data
+                    if (missedIngredientCount != null)
+                      Text(
+                        'Missing ingredients: $missedIngredientCount',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Likes: ${recipe['likes'] ?? 0}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+                    
+                    if (readyInMinutes != null)
+                      Text(
+                        'Ready in: $readyInMinutes minutes',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
                       ),
-                    ),
-                    // Debug: Show recipe ID (optional - remove in production)
-                    Text(
-                      'ID: ${recipe['id'] ?? 'Not found'}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[400],
+                    
+                    if (healthScore != null)
+                      Text(
+                        'Health score: $healthScore',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
                       ),
-                    ),
+                    
+                    if (aggregateLikes != null)
+                      Text(
+                        'Likes: $aggregateLikes',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    
+                    // Fallback if no specific data is available
+                    if (missedIngredientCount == null && 
+                        readyInMinutes == null && 
+                        healthScore == null && 
+                        aggregateLikes == null)
+                      Text(
+                        'Tap for details',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
                   ],
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip() {
+    final hasActiveFilters = (_currentFilters['cuisines'] as List).isNotEmpty;
+    
+    if (!hasActiveFilters) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Row(
+        children: [
+          Chip(
+            label: Text(
+              '${(_currentFilters['cuisines'] as List).length} cuisine(s) selected',
+            ),
+            backgroundColor: _primaryColor30,
+            deleteIcon: const Icon(Icons.close),
+            onDeleted: _clearFilters,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Sorted by: ${_currentFilters['sort']}',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -374,7 +538,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
             ),
             const SizedBox(height: 8.0),
             Text(
-              'Try adding things to your inventory',
+              'Try adjusting your filters or adding items to your inventory',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14.0,
@@ -383,11 +547,12 @@ class _RecipesScreenState extends State<RecipesScreen> {
             ),
             const SizedBox(height: 20.0),
             ElevatedButton(
-              onPressed: _fetchRecipes,
+              onPressed: _clearFilters,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primaryColor,
+                foregroundColor: Colors.white,
               ),
-              child: const Text('Retry'),
+              child: const Text('Clear Filters'),
             ),
             const SizedBox(height: 100.0),
           ],
@@ -482,21 +647,28 @@ class _RecipesScreenState extends State<RecipesScreen> {
           const SizedBox(width: 8.0),
         ],
       ),
-      body: _isLoading
-          ? _buildLoadingState()
-          : _hasError
-              ? _buildErrorState()
-              : _recipes.isEmpty
-                  ? _buildEmptyState()
-                  : RefreshIndicator(
-                      onRefresh: _fetchRecipes,
-                      child: ListView.builder(
-                        itemCount: _recipes.length,
-                        itemBuilder: (context, index) {
-                          return _buildRecipeCard(_recipes[index]);
-                        },
-                      ),
-                    ),
+      body: Column(
+        children: [
+          _buildFilterChip(),
+          Expanded(
+            child: _isLoading
+                ? _buildLoadingState()
+                : _hasError
+                    ? _buildErrorState()
+                    : _recipes.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            onRefresh: () => _fetchRecipes(),
+                            child: ListView.builder(
+                              itemCount: _recipes.length,
+                              itemBuilder: (context, index) {
+                                return _buildRecipeCard(_recipes[index]);
+                              },
+                            ),
+                          ),
+          ),
+        ],
+      ),
     );
   }
 }

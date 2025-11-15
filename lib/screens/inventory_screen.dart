@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'inventory_categories.dart';
 import 'dishes.dart';
 
@@ -77,9 +79,7 @@ class InventoryCategoriesScreen extends StatelessWidget {
   Widget _buildSearchBar(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigate to search functionality - you can implement this later
-        // For now, it could navigate to a search screen or show a search dialog
-        _showSearchDialog(context);
+        _showSearchScreen(context);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
@@ -111,21 +111,12 @@ class InventoryCategoriesScreen extends StatelessWidget {
     );
   }
 
-  void _showSearchDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Search'),
-          content: const Text('Search functionality would be implemented here.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
+  void _showSearchScreen(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SearchInventoryScreen(),
+      ),
     );
   }
 
@@ -209,10 +200,234 @@ class InventoryCategoriesScreen extends StatelessWidget {
 
   void _navigateToRecipes(BuildContext context) {
     Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => RecipeApp(),
-    ),
+      context,
+      MaterialPageRoute(
+        builder: (context) => RecipeApp(),
+      ),
+    );
+  }
+}
+
+// --- Search Screen Widget ---
+class SearchInventoryScreen extends StatefulWidget {
+  const SearchInventoryScreen({super.key});
+
+  @override
+  State<SearchInventoryScreen> createState() => _SearchInventoryScreenState();
+}
+
+class _SearchInventoryScreenState extends State<SearchInventoryScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
+  
+  List<QueryDocumentSnapshot> _searchResults = [];
+  bool _isSearching = false;
+
+  void _searchInventory(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(_currentUser?.uid)
+          .collection('inventory')
+          .where('name', isGreaterThanOrEqualTo: query)
+          .where('name', isLessThanOrEqualTo: query + '\uf8ff')
+          .get();
+
+      setState(() {
+        _searchResults = snapshot.docs;
+        _isSearching = false;
+      });
+    } catch (e) {
+      print('Error searching inventory: $e');
+      setState(() {
+        _isSearching = false;
+      });
+    }
+  }
+
+  void _performFuzzySearch(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(_currentUser?.uid)
+          .collection('inventory')
+          .get();
+
+      // Perform client-side fuzzy filtering
+      final filteredResults = snapshot.docs.where((doc) {
+        final String name = doc['name'].toString().toLowerCase();
+        final String searchQuery = query.toLowerCase();
+        return name.contains(searchQuery);
+      }).toList();
+
+      setState(() {
+        _searchResults = filteredResults;
+        _isSearching = false;
+      });
+    } catch (e) {
+      print('Error performing fuzzy search: $e');
+      setState(() {
+        _isSearching = false;
+      });
+    }
+  }
+
+  Widget _buildSearchResultItem(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      elevation: 2,
+      child: ListTile(
+        leading: _getCategoryIcon(data['category'] ?? 'Other'),
+        title: Text(
+          data['name'] ?? 'Unknown Item',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        subtitle: Text(
+          '${data['quantity'] ?? ''} ${data['unit'] ?? ''}',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+        trailing: Text(
+          data['category'] ?? 'Other',
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Icon _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'vegetable':
+        return const Icon(Icons.grass_outlined, color: Colors.green);
+      case 'fruit':
+        return const Icon(Icons.apple, color: Colors.red);
+      case 'protein':
+      case 'meat':
+        return const Icon(Icons.local_fire_department_outlined, color: Colors.orange);
+      case 'dairy':
+        return const Icon(Icons.local_drink_outlined, color: Colors.blue);
+      case 'grain':
+        return const Icon(Icons.grain_outlined, color: Colors.amber);
+      case 'beverage':
+        return const Icon(Icons.coffee, color: Colors.brown);
+      case 'snack':
+        return const Icon(Icons.cookie, color: Colors.orange);
+      case 'spices':
+        return const Icon(Icons.energy_savings_leaf, color: Colors.green);
+      default:
+        return const Icon(Icons.inventory_2_outlined, color: Colors.grey);
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: TextField(
+          controller: _searchController,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Search inventory items...',
+            border: InputBorder.none,
+            hintStyle: TextStyle(color: Colors.grey[600]),
+          ),
+          onChanged: (value) {
+            // Use fuzzy search for better partial matching
+            _performFuzzySearch(value);
+          },
+        ),
+        actions: [
+          if (_searchController.text.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.clear, color: Colors.grey),
+              onPressed: () {
+                _searchController.clear();
+                setState(() {
+                  _searchResults = [];
+                  _isSearching = false;
+                });
+              },
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Search info
+          if (_searchController.text.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Type to search your inventory items',
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            ),
+          
+          // Loading indicator
+          if (_isSearching)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
+          
+          // Search results
+          Expanded(
+            child: _searchResults.isEmpty && _searchController.text.isNotEmpty && !_isSearching
+                ? const Center(
+                    child: Text(
+                      'No items found',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      return _buildSearchResultItem(_searchResults[index]);
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -228,7 +443,6 @@ class InventoryApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       home: const InventoryCategoriesScreen(),
       routes: {
-        // You can also use named routes if preferred
         '/inventory': (context) {
           final category = ModalRoute.of(context)!.settings.arguments as String? ?? 'All';
           return InventoryScreen(category: category);

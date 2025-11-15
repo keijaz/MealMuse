@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'account_screen.dart';
-import 'navbar.dart'; // Import the navbar from external file
+import 'navbar.dart'; 
 import 'inventory_screen.dart';
 import 'dishes.dart';
 import 'saved_recipes.dart';
 import 'add_item_screen.dart';
+import 'settings.dart';
 
 // --- COLOR PALETTE (Required for local widgets) ---
 class AppColors {
@@ -97,6 +100,48 @@ class GridButton extends StatelessWidget {
   }
 }
 
+// --- USER DATA STREAM ---
+class UserDataStream extends StatelessWidget {
+  final Widget Function(String displayName) builder;
+  
+  const UserDataStream({super.key, required this.builder});
+  
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    
+    if (user == null) {
+      return builder('Guest'); // Fallback if user is not logged in
+    }
+    
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return builder('...'); // Loading state
+        }
+        
+        if (snapshot.hasError) {
+          print('Error fetching user data: ${snapshot.error}');
+          return builder('User'); // Fallback on error
+        }
+        
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return builder('User'); // Fallback if no user data
+        }
+        
+        final userData = snapshot.data!.data() as Map<String, dynamic>?;
+        final displayName = userData?['displayName'] as String?;
+        
+        return builder(displayName ?? 'User'); // Use displayName or fallback
+      },
+    );
+  }
+}
+
 // --- ACTUAL HOME SCREEN CONTENT (The body of the Home tab) ---
 class HomeScreenContent extends StatelessWidget {
   const HomeScreenContent({super.key});
@@ -162,7 +207,7 @@ class HomeScreenContent extends StatelessWidget {
             title: 'Settings',
             icon: Icons.settings_outlined,
             color: AppColors.settings,
-            screen: ProfileCheck(), // Navigates to SettingsScreen
+            screen: Setting_menu(), // Navigates to SettingsScreen
           ),
         ],
       ),
@@ -192,18 +237,20 @@ class HomeScreenContent extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Hi Komal!',
-                          style: TextStyle(
-                            color: AppColors.headerText,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
+                        UserDataStream(
+                          builder: (displayName) => Text(
+                            'Hi $displayName!',
+                            style: const TextStyle(
+                              color: AppColors.headerText,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
-                        Text(
+                        const Text(
                           'Welcome back',
                           style: TextStyle(
                             color: AppColors.headerText,

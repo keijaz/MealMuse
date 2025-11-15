@@ -53,7 +53,7 @@ class CustomBottomNavBar extends StatelessWidget {
         ),
       );
     }
-    else if (index == 1) {
+    else if (index == 0) {
       // 2. Add (Plus icon): Navigate to a new page (AddItem)
       Navigator.push(
         navContext,
@@ -61,7 +61,7 @@ class CustomBottomNavBar extends StatelessWidget {
           builder: (context) => const MainAppScreen(),
         ),
       );
-    } else if (index == 0) {
+    } else if (index == 1) {
       // 2. Add (Plus icon): Navigate to a new page (AddItem)
       Navigator.push(
         navContext,
