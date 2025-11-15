@@ -630,7 +630,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const MainAppScreen()),
+              MaterialPageRoute(builder: (context) => const MainHomeScreen()),
             );
           },
         ),

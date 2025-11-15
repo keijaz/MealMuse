@@ -119,6 +119,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     required IconData icon,
     bool isPassword = false,
     required TextEditingController controller,
+    VoidCallback? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
@@ -126,6 +127,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         controller: controller,
         obscureText: isPassword,
         style: const TextStyle(color: Colors.black87),
+        onChanged: (value) {
+          if (onChanged != null) {
+            onChanged();
+          }
+        },
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: TextStyle(color: Colors.grey[600]),
@@ -282,7 +288,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Registration Successful'),
-          content: const Text('Your account has been created successfully!\n\nYour personal inventory and saved recipes sections are ready to use.'),
+          content: const Text('Your account has been created successfully!'),
           actions: [
             TextButton(
               onPressed: () {
@@ -327,29 +333,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   // Widget to show username requirements
-  Widget _buildUsernameRequirements() {
-    final username = _usernameController.text;
+  // Widget _buildUsernameRequirements() {
+  //   final username = _usernameController.text;
     
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Username requirements:',
-            style: TextStyle(
-              color: _primaryText.withOpacity(0.8),
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 4),
-          _buildRequirementLine('3-20 characters', username.length >= 3 && username.length <= 20),
-          _buildRequirementLine('Letters, numbers, underscores only', 
-              username.isEmpty || RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username)),
-        ],
-      ),
-    );
-  }
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Text(
+  //           'Username requirements:',
+  //           style: TextStyle(
+  //             color: _primaryText.withOpacity(0.8),
+  //             fontSize: 12,
+  //           ),
+  //         ),
+  //         const SizedBox(height: 4),
+  //         _buildRequirementLine('3-20 characters', username.length >= 3 && username.length <= 20),
+  //         _buildRequirementLine('Letters, numbers, underscores only', 
+  //             username.isEmpty || RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username)),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildRequirementLine(String text, bool isMet) {
     return Row(
@@ -445,14 +451,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     hintText: 'Username', 
                     icon: Icons.person_outline,
                     controller: _usernameController,
+                    onChanged: () => setState(() {}), // Trigger rebuild when username changes
                   ),
                   // Username requirements
-                  _buildUsernameRequirements(),
+                  // _buildUsernameRequirements(),
                   _buildTextField(
                     hintText: 'Password', 
                     icon: Icons.lock_outline, 
                     isPassword: true,
                     controller: _passwordController,
+                    onChanged: () => setState(() {}), // Trigger rebuild when password changes
                   ),
                   // Password requirements
                   _buildPasswordRequirements(),
@@ -461,6 +469,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     icon: Icons.lock_outline, 
                     isPassword: true,
                     controller: _confirmPasswordController,
+                    onChanged: () => setState(() {}), // Trigger rebuild when confirm password changes
                   ),
                   
                   const SizedBox(height: 40),

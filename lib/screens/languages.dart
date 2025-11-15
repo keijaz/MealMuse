@@ -206,7 +206,7 @@ class _BottomNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> items = [
-      {'icon': Icons.home, 'onTap': () => navigateHome(context, const MainAppScreen())},
+      {'icon': Icons.home, 'onTap': () => navigateHome(context, const MainHomeScreen())},
       {'icon': Icons.search, 'onTap': () => navigateTo(context, const RecipeApp())},
       {'icon': Icons.add_circle, 'onTap': () => navigateTo(context, const InventoryCategoriesScreen())},
       {'icon': Icons.delete_outline, 'onTap': () => navigateTo(context, const ExpiringItemsScreen())},

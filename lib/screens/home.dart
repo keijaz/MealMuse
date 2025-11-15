@@ -287,14 +287,14 @@ class HomeScreenContent extends StatelessWidget {
 }
 
 // --- MAIN APPLICATION SHELL (Stateful Widget) ---
-class MainAppScreen extends StatefulWidget {
-  const MainAppScreen({super.key});
+class MainHomeScreen extends StatefulWidget {
+  const MainHomeScreen({super.key});
 
   @override
-  State<MainAppScreen> createState() => _MainAppScreenState();
+  State<MainHomeScreen> createState() => _MainHomeScreenState();
 }
 
-class _MainAppScreenState extends State<MainAppScreen> {
+class _MainHomeScreenState extends State<MainHomeScreen> {
   // State variable to track the currently selected content index: 0=Home, 1=Search, 2=Profile
   int _selectedIndex = 0;  
 

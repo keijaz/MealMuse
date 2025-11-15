@@ -58,7 +58,7 @@ class CustomBottomNavBar extends StatelessWidget {
       Navigator.push(
         navContext,
         MaterialPageRoute(
-          builder: (context) => const MainAppScreen(),
+          builder: (context) => const MainHomeScreen(),
         ),
       );
     } else if (index == 1) {

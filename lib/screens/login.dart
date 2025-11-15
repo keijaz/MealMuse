@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'register.dart'; 
 import 'home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../adminScreens/AdminHome.dart'; // Make sure to import the AdminApp screen
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -71,11 +72,21 @@ class _LoginScreenState extends State<LoginScreen> {
       // Dismiss loading indicator
       Navigator.of(context).pop();
 
-      // Navigate to home screen on successful login
+      // Navigate to appropriate screen based on user email
       if (userCredential.user != null) {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (context) => const MainAppScreen(),
-        ));
+        final userEmail = userCredential.user!.email?.toLowerCase().trim();
+        
+        if (userEmail == 'admin@mealmuse.com') {
+          // Navigate to admin screen
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (context) => const AdminApp(),
+          ));
+        } else {
+          // Navigate to regular home screen
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (context) => const MainHomeScreen(),
+          ));
+        }
       }
     } on FirebaseAuthException catch (e) {
       // Dismiss loading indicator
@@ -134,6 +145,129 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showForgotPasswordDialog(BuildContext context) {
+    TextEditingController emailController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Reset Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Enter your email address and we\'ll send you a password reset link.'),
+              const SizedBox(height: 20),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  hintText: 'Enter your email',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (emailController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter your email address')),
+                  );
+                  return;
+                }
+                
+                await _sendPasswordResetEmail(context, emailController.text.trim());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _cardColor,
+              ),
+              child: const Text('Send Link', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _sendPasswordResetEmail(BuildContext context, String email) async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        },
+      );
+
+      await _auth.sendPasswordResetEmail(email: email);
+      
+      // Dismiss loading and dialog
+      Navigator.of(context).pop(); // Dismiss loading
+      Navigator.of(context).pop(); // Dismiss dialog
+      
+      // Show success message
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Email Sent'),
+            content: Text('Password reset link has been sent to $email. Please check your inbox.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      
+    } on FirebaseAuthException catch (e) {
+      // Dismiss loading
+      Navigator.of(context).pop();
+      
+      String errorMessage = 'Failed to send reset email. Please try again.';
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No account found with this email address.';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (e.code == 'too-many-requests') {
+        errorMessage = 'Too many attempts. Please try again later.';
+      }
+      
+      // Show error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      // Dismiss loading
+      Navigator.of(context).pop();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An error occurred: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -173,6 +307,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     icon: Icons.lock_outline, 
                     isPassword: true,
                     controller: _passwordController,
+                  ),
+                  
+                  // Forgot Password Button
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        _showForgotPasswordDialog(context);
+                      },
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

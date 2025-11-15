@@ -792,7 +792,7 @@ class _SleekInputField extends StatelessWidget {
                   onTap: onEditTap,
                   child: const Icon(
                     Icons.edit_note,
-                    color: Colors.red,
+                    color: Color(0xFF5B8A94),
                     size: 30,
                   ),
                 ),
