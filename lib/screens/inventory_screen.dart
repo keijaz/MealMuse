@@ -32,6 +32,7 @@ class InventoryCategoriesScreen extends StatefulWidget {
 class _InventoryCategoriesScreenState extends State<InventoryCategoriesScreen> {
   // Data for the main category buttons
   final List<InventoryItem> categories = const [
+    InventoryItem(name: 'All', icon: Icons.all_inclusive, category: 'All'),
     InventoryItem(name: 'Vegetables', icon: Icons.grass_outlined, category: 'Vegetable'),
     InventoryItem(name: 'Fruits', icon: Icons.apple, category: 'Fruit'),
     InventoryItem(name: 'Protein', icon: Icons.local_fire_department_outlined, category: 'Protein'),
@@ -61,6 +62,8 @@ class _InventoryCategoriesScreenState extends State<InventoryCategoriesScreen> {
  
   String _translateCategoryName(String name) {
     switch (name.toLowerCase()) {
+      case 'all':
+        return TranslationHelper.t('All', 'تمام');
       case 'vegetables':
         return TranslationHelper.t('Vegetables', 'سبزی');
       case 'fruits':
@@ -95,7 +98,6 @@ class _InventoryCategoriesScreenState extends State<InventoryCategoriesScreen> {
   }
 
   // Widget for a single, stylish category button
-
   Widget _buildCategoryButton(BuildContext context, InventoryItem category) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -417,6 +419,8 @@ class _SearchInventoryScreenState extends State<SearchInventoryScreen> {
 
   Icon _getCategoryIcon(String category) {
     switch (category.toLowerCase()) {
+      case 'all':
+        return const Icon(Icons.all_inclusive, color: Colors.purple);
       case 'vegetable':
         return const Icon(Icons.grass_outlined, color: Colors.green);
       case 'fruit':

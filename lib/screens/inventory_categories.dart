@@ -144,6 +144,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
       return const Stream.empty();
     }
 
+    // If category is "All", return all items without category filter
+    if (widget.category.toLowerCase() == 'all') {
+      return _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('inventory')
+          .orderBy('createdAt', descending: true)
+          .snapshots();
+    }
+
+    // Otherwise, filter by specific category
     return _firestore
         .collection('users')
         .doc(user.uid)
@@ -154,6 +165,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Color _getCategoryColor(String category) {
+    if (category.toLowerCase() == 'all') {
+      return const Color(0xFF6A89CC); // Different color for "All" category
+    }
+    
     switch (category.toLowerCase()) {
       case 'fruit':
         return const Color(0xFF5C8A94);
@@ -173,6 +188,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   String _translateCategory(String category) {
+    if (category.toLowerCase() == 'all') {
+      return 'تمام';
+    }
+    
     switch (category.toLowerCase()) {
       case 'fruit':
         return 'پھل';
@@ -399,6 +418,24 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             ),
                           ),
                         ),
+                        // Show category badge for "All" category view
+                        if (widget.category.toLowerCase() == 'all')
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: item.backgroundColor.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              item.category,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: item.backgroundColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 8),
                         // Edit/Delete dropdown button
                         _buildEditDeleteDropdown(item),
                       ],
@@ -409,6 +446,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         Text(
                           TranslationHelper.t('Quantity', 'مقدار') + ': ${item.quantity} ${item.unit}',
                           style: TextStyle(fontSize: 14, color: subtitleColor),
+                        ),
+                        const SizedBox(width: 16),
+                        // Expiry info
+                        Text(
+                          TranslationHelper.t('Expires', 'ختم ہوتا ہے') + ': ${item.expiryDisplay}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: expiryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -421,7 +468,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -497,7 +543,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                TranslationHelper.t('Search in ${widget.category}', 'میں تلاش کریں ${_translateCategory(widget.category)}'),
+                                widget.category.toLowerCase() == 'all'
+                                    ? TranslationHelper.t('Search all items', 'تمام آئٹمز میں تلاش کریں')
+                                    : TranslationHelper.t('Search in ${widget.category}', 'میں تلاش کریں ${_translateCategory(widget.category)}'),
                                 style: TextStyle(color: isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600], fontSize: 16.0),
                               ),
                             ),
@@ -559,7 +607,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                TranslationHelper.t('Add some ${widget.category.toLowerCase()} to your inventory', 'اپنی انوینٹری میں کچھ ${_translateCategory(widget.category).toLowerCase()} شامل کریں'),
+                                widget.category.toLowerCase() == 'all'
+                                    ? TranslationHelper.t('Add some items to your inventory', 'اپنی انوینٹری میں کچھ آئٹمز شامل کریں')
+                                    : TranslationHelper.t('Add some ${widget.category.toLowerCase()} to your inventory', 'اپنی انوینٹری میں کچھ ${_translateCategory(widget.category).toLowerCase()} شامل کریں'),
                                 style: const TextStyle(
                                   color: Colors.white54,
                                   fontSize: 14,
@@ -601,6 +651,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 }
+
 
 // --- Edit Item Screen ---
 class EditItemScreen extends StatefulWidget {
@@ -651,16 +702,50 @@ class _EditItemScreenState extends State<EditItemScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill the form with existing item data
+    // Pre-fill the form with existing item data with compatibility fallbacks
     _nameController.text = widget.item.name;
-    _selectedCategory = widget.item.category;
+    
+    // Handle category compatibility - set to default if not in options
+    if (_categoryOptions.contains(widget.item.category)) {
+      _selectedCategory = widget.item.category;
+    } else {
+      _selectedCategory = 'Other'; // Default category
+      print('Category "${widget.item.category}" not found in options, defaulting to "Other"');
+    }
+    
     _quantityController.text = widget.item.quantity.toString();
-    _selectedUnit = widget.item.unit;
+    
+    // Handle unit compatibility - set to default if not in options
+    if (_unitOptions.contains(widget.item.unit)) {
+      _selectedUnit = widget.item.unit;
+    } else {
+      _selectedUnit = 'units'; // Default unit
+      print('Unit "${widget.item.unit}" not found in options, defaulting to "units"');
+    }
+    
     _purchaseDateController.text = widget.item.purchaseDate ?? '';
     _expiryDateController.text = widget.item.expiryDate ?? '';
+    
+    // Handle quantity compatibility - ensure it's a valid number
+    _validateAndFixQuantity();
   }
 
-  // Update item in Firebase
+  // Validate and fix quantity if it's invalid
+  void _validateAndFixQuantity() {
+    final quantityText = _quantityController.text.trim();
+    if (quantityText.isEmpty) {
+      _quantityController.text = '0';
+      return;
+    }
+    
+    final quantity = int.tryParse(quantityText);
+    if (quantity == null || quantity < 0) {
+      _quantityController.text = '0';
+      print('Invalid quantity "$quantityText", defaulting to "0"');
+    }
+  }
+
+  // Update item in Firebase with compatibility handling
   Future<void> _updateItemInInventory() async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -672,6 +757,9 @@ class _EditItemScreenState extends State<EditItemScreen> {
       _showErrorDialog('Missing Information', 'Item name is required.');
       return;
     }
+
+    // Validate and fix quantity before saving
+    _validateAndFixQuantity();
 
     try {
       // Show loading indicator
@@ -685,14 +773,20 @@ class _EditItemScreenState extends State<EditItemScreen> {
         },
       );
 
+      // Ensure we have valid category and unit values
+      final String finalCategory = _selectedCategory ?? 'Other';
+      final String finalUnit = _selectedUnit;
+      
+      // Parse and validate quantity
+      final quantityText = _quantityController.text.trim();
+      final int finalQuantity = int.tryParse(quantityText) ?? 0;
+
       // Prepare updated item data
       final itemData = {
         'name': _nameController.text.trim(),
-        'category': _selectedCategory,
-        'quantity': _quantityController.text.trim().isNotEmpty 
-            ? _quantityController.text.trim() 
-            : null,
-        'unit': _selectedUnit,
+        'category': finalCategory,
+        'quantity': finalQuantity,
+        'unit': finalUnit,
         'purchaseDate': _purchaseDateController.text.trim().isNotEmpty
             ? _purchaseDateController.text.trim()
             : null,
@@ -1033,6 +1127,10 @@ class _EditItemScreenState extends State<EditItemScreen> {
                     borderSide: const BorderSide(color: Color(0xFF5B8A8A), width: 2.0),
                   ),
                 ),
+                onChanged: (value) {
+                  // Validate quantity as user types
+                  _validateAndFixQuantity();
+                },
               ),
             ),
             const SizedBox(width: 10),
@@ -1046,7 +1144,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
                   borderRadius: BorderRadius.circular(12.0),
                 ),
                 child: DropdownButtonFormField<String>(
-                  initialValue: _selectedUnit,
+                  value: _selectedUnit, // Ensure the dropdown shows the current value
                   icon: Icon(Icons.keyboard_arrow_down, color: dropdownIconColor),
                   dropdownColor: fieldBg,
                   decoration: const InputDecoration(
@@ -1229,6 +1327,11 @@ class _EditItemScreenState extends State<EditItemScreen> {
     super.dispose();
   }
 }
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
 
 // --- Category-Specific Search Screen ---
 class CategorySearchScreen extends StatefulWidget {

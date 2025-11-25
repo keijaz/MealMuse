@@ -22,35 +22,35 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
   
   String _selectedCategory = 'Other';
   final List<String> _categories = [
-    'Vegetables',
-    'Fruits',
+    'Vegetable',
+    'Fruit',
     'Protein',
     'Dairy',
-    'Grains',
-    'Beverages',
-    'Snacks',
+    'Grain',
+    'Beverage',
+    'Snack',
     'Spices',
     'Other'
   ];
 
   String _translateCategoryName(String name) {
     switch (name.toLowerCase()) {
-      case 'vegetables':
-        return TranslationHelper.t('Vegetables', 'سبزی');
+      case 'vegetable':
+        return TranslationHelper.t('Vegetable', 'سبزی');
       case 'fruits':
-        return TranslationHelper.t('Fruits', 'پھل');
+        return TranslationHelper.t('Fruit', 'پھل');
       case 'protein':
         return TranslationHelper.t('Protein', 'پروٹین');
       case 'dairy':
         return TranslationHelper.t('Dairy', 'ڈیری');
-      case 'grains':
-        return TranslationHelper.t('Grains', 'اناج');
-      case 'beverages':
-        return TranslationHelper.t('Beverages', 'مشروب');
-      case 'snacks':
-        return TranslationHelper.t('Snacks', 'اسنیکس');
-      case 'spices':
-        return TranslationHelper.t('Spices', 'مصالحے');
+      case 'grain':
+        return TranslationHelper.t('Grain', 'اناج');
+      case 'beverage':
+        return TranslationHelper.t('Beverage', 'مشروب');
+      case 'snack':
+        return TranslationHelper.t('Snack', 'اسنیکس');
+      case 'spice':
+        return TranslationHelper.t('Spice', 'مصالحے');
       case 'other':
         return TranslationHelper.t('Other', 'دیگر');
       default:
@@ -120,6 +120,250 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
            (isUnit1Volume && isUnit2Volume) ||
            (isUnit1Count && isUnit2Count) ||
            (isUnit1Length && isUnit2Length);
+  }
+
+  // Add item to inventory with duplicate checking
+  // Add item to inventory with duplicate checking and always set quantity to 1
+  Future<void> _addToInventory(DocumentSnapshot groceryItem) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final data = groceryItem.data() as Map<String, dynamic>;
+      final String name = (data['name'] ?? '').toString().toLowerCase().trim();
+      final String originalName = data['originalName'] ?? name;
+      // Always set quantity to 1 when moving to inventory
+      final double amount = 1.0; // Always 1 unit
+      final String unit = (data['unit'] ?? '').toString();
+      final String groceryCategory = data['category'] ?? 'Other';
+      final String recipeSource = data['recipeSource'] ?? '';
+      final String note = data['note'] ?? '';
+
+      // Check if item already exists in inventory
+      final existingInventoryQuery = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('inventory')
+          .where('name', isEqualTo: name)
+          .get();
+
+      if (existingInventoryQuery.docs.isNotEmpty) {
+        // Item exists in inventory - update quantity to 1 and other fields
+        final existingDoc = existingInventoryQuery.docs.first;
+        final existingData = existingDoc.data() as Map<String, dynamic>;
+        final String existingUnit = (existingData['unit'] ?? '').toString().toLowerCase().trim();
+        final String existingCategory = existingData['category'] ?? 'Other';
+        final String existingNotes = existingData['notes'] ?? '';
+        
+        // Check if units are compatible
+        if (_areUnitsCompatible(existingUnit, unit)) {
+          // Always set quantity to 1, use existing inventory category
+          final String displayUnit = existingUnit.isNotEmpty ? existingUnit : unit;
+          
+          // Combine notes if there are any from grocery item
+          String combinedNotes = existingNotes;
+          if (note.isNotEmpty) {
+            combinedNotes = existingNotes.isEmpty 
+                ? note 
+                : '$existingNotes\n$note';
+          }
+
+          // Update all relevant fields in inventory, always setting quantity to 1
+          await existingDoc.reference.update({
+            'quantity': '1', // Always set to 1
+            'unit': displayUnit,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'notes': combinedNotes,
+            // Keep existing category, expiryDate, and other inventory-specific fields
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Added $originalName to inventory'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          // Units are incompatible - add as new item with grocery category and quantity 1
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('inventory')
+              .add({
+            'name': name,
+            'quantity': '1', // Always set to 1
+            'unit': unit,
+            'category': groceryCategory, // Use grocery category for new items
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+            'userId': user.uid,
+            'notes': note.isNotEmpty ? note : '',
+            // Set default expiry date (30 days from now) or calculate based on category
+            'expiryDate': _calculateDefaultExpiryDate(groceryCategory),
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Added $originalName to inventory (different unit, quantity set to 1)'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      } else {
+        // Item doesn't exist in inventory - add new item with grocery category and quantity 1
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('inventory')
+            .add({
+          'name': name,
+          'quantity': '1', // Always set to 1
+          'unit': unit,
+          'category': groceryCategory,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'userId': user.uid,
+          'notes': note.isNotEmpty ? note : '',
+          // Set default expiry date based on category
+          'expiryDate': _calculateDefaultExpiryDate(groceryCategory),
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Added $originalName to inventory (quantity set to 1)'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+
+      // Remove from grocery list after adding to inventory
+      await _removeItem(groceryItem.id);
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add to inventory: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  // Helper method to calculate default expiry date based on category
+  String _calculateDefaultExpiryDate(String category) {
+    final now = DateTime.now();
+    final Map<String, int> categoryExpiryDays = {
+      'Vegetable': 7,
+      'Fruit': 5,
+      'Protein': 14,
+      'Dairy': 7,
+      'Grain': 365, // 1 year for grains
+      'Beverage': 180, // 6 months for beverages
+      'Snack': 90, // 3 months for snacks
+      'Spice': 365, // 1 year for spices
+      'Other': 30, // 1 month default
+    };
+
+    final days = categoryExpiryDays[category] ?? 30;
+    final expiryDate = now.add(Duration(days: days));
+    
+    // Format as YYYY-MM-DD
+    return '${expiryDate.year}-${expiryDate.month.toString().padLeft(2, '0')}-${expiryDate.day.toString().padLeft(2, '0')}';
+  }
+
+  // Show bottom sheet menu for grocery items (more reliable positioning)
+  void _showItemMenu(DocumentSnapshot doc, String itemName) {
+    final isDarkMode = ThemeProvider().darkModeEnabled;
+    final backgroundColor = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
+    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: backgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  itemName.capitalize(),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+              ),
+              Divider(
+                color: isDarkMode ? const Color(0xFF404040) : Colors.grey[300],
+                height: 1,
+              ),
+              // Menu Items
+              _buildMenuOption(
+                icon: Icons.inventory_2_outlined,
+                title: TranslationHelper.t('Add to Inventory', 'انوینٹری میں شامل کریں'),
+                color: Colors.green[700]!,
+                onTap: () {
+                  Navigator.pop(context);
+                  _addToInventory(doc);
+                },
+              ),
+              _buildMenuOption(
+                icon: Icons.delete_outline,
+                title: TranslationHelper.t('Delete', 'حذف کریں'),
+                color: Colors.red[700]!,
+                onTap: () {
+                  Navigator.pop(context);
+                  _showDeleteDialog(doc.id, itemName);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper method to build menu option
+  Widget _buildMenuOption({
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final isDarkMode = ThemeProvider().darkModeEnabled;
+    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+
+    return ListTile(
+      leading: Icon(icon, size: 24, color: color),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          color: textColor,
+        ),
+      ),
+      onTap: onTap,
+    );
   }
 
   // Add new item to grocery list with duplicate checking
@@ -259,16 +503,6 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
           .collection('grocery_list')
           .doc(docId)
           .delete();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Item removed'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -353,119 +587,121 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
 
   // Build grocery item card
   Widget _buildGroceryItem(DocumentSnapshot doc) {
-    final isDarkMode = ThemeProvider().darkModeEnabled;
-    final data = doc.data() as Map<String, dynamic>;
-    final String name = data['originalName'] ?? data['name'] ?? 'Unknown';
-    final String amount = data['amount']?.toString() ?? '1';
-    final String unit = data['unit']?.toString() ?? '';
-    final String category = data['category'] ?? 'Other';
-    final bool isChecked = data['isChecked'] ?? false;
-    final String recipeSource = data['recipeSource'] ?? '';
-    final String note = data['note'] ?? '';
+  final isDarkMode = ThemeProvider().darkModeEnabled;
+  final data = doc.data() as Map<String, dynamic>;
+  final String name = data['originalName'] ?? data['name'] ?? 'Unknown';
+  final String amount = data['amount']?.toString() ?? '1';
+  final String unit = data['unit']?.toString() ?? '';
+  final String category = data['category'] ?? 'Other';
+  final bool isChecked = data['isChecked'] ?? false;
+  final String recipeSource = data['recipeSource'] ?? '';
+  final String note = data['note'] ?? '';
 
-    final cardColor = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
-    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
-    final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
+  final cardColor = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
+  final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+  final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
 
-    return Card(
-      color: cardColor,
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-      child: ListTile(
-        leading: Checkbox(
-          value: isChecked,
-          onChanged: (value) => _toggleItemChecked(doc.id, isChecked),
-          activeColor: const Color(0xFF5C8A94),
-        ),
-        title: Text(
-          name.capitalize(),
-          style: TextStyle(
-            fontSize: 16,
-            color: textColor,
-            decoration: isChecked ? TextDecoration.lineThrough : TextDecoration.none,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (amount != '1' || unit.isNotEmpty)
-              Text(
-                '$amount ${unit.isNotEmpty ? unit : ''}'.trim(),
-                style: TextStyle(
-                  fontSize: 14,
-                  color: subtitleColor,
-                  decoration: isChecked ? TextDecoration.lineThrough : TextDecoration.none,
-                ),
-              ),
-            if (recipeSource.isNotEmpty)
-              Text(
-                'From: $recipeSource',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: const Color(0xFF5C8A94),
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            if (note.isNotEmpty)
-              Text(
-                note,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.orange[700],
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            Container(
-              margin: const EdgeInsets.only(top: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: _getCategoryColor(category).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: _getCategoryColor(category).withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                _translateCategoryName(category),
-                style: TextStyle(
-                  fontSize: 10,
-                  color: _getCategoryColor(category),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-        trailing: IconButton(
-          icon: Icon(
-            Icons.delete_outline,
-            color: isDarkMode ? const Color(0xFFE1E1E1) : Colors.grey[600],
-          ),
-          onPressed: () => _showDeleteDialog(doc.id, name),
+  return Card(
+    color: cardColor,
+    elevation: 2,
+    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+    child: ListTile(
+      leading: Checkbox(
+        value: isChecked,
+        onChanged: (value) => _toggleItemChecked(doc.id, isChecked),
+        activeColor: const Color(0xFF5C8A94),
+      ),
+      title: Text(
+        name.capitalize(),
+        style: TextStyle(
+          fontSize: 16,
+          color: textColor,
+          decoration: isChecked ? TextDecoration.lineThrough : TextDecoration.none,
         ),
       ),
-    );
-  }
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (amount != '1' || unit.isNotEmpty)
+            Text(
+              '$amount ${unit.isNotEmpty ? unit : ''}'.trim(),
+              style: TextStyle(
+                fontSize: 14,
+                color: subtitleColor,
+                decoration: isChecked ? TextDecoration.lineThrough : TextDecoration.none,
+              ),
+            ),
+          if (recipeSource.isNotEmpty)
+            Text(
+              'From: $recipeSource',
+              style: TextStyle(
+                fontSize: 12,
+                color: const Color(0xFF5C8A94),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          if (note.isNotEmpty)
+            Text(
+              note,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.orange[700],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: _getCategoryColor(category).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: _getCategoryColor(category).withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              _translateCategoryName(category),
+              style: TextStyle(
+                fontSize: 10,
+                color: _getCategoryColor(category),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+      trailing: Builder(
+        builder: (context) => IconButton(
+          icon: Icon(
+            Icons.more_vert,
+            color: isDarkMode ? const Color(0xFFE1E1E1) : Colors.grey[600],
+          ),
+          onPressed: () => _showItemMenu(doc, name),
+        ),
+      ),
+    ),
+  );
+}
 
   // Get color for category
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Fruits':
         return const Color(0xFF4CAF50);
-      case 'Vegetables':
+      case 'Vegetable':
         return const Color(0xFF8BC34A);
       case 'Protein':
         return const Color(0xFFF44336);
       case 'Dairy':
         return const Color(0xFFFFC107);
-      case 'Grains':
+      case 'Grain':
         return const Color(0xFF795548);
-      case 'Beverages':
+      case 'Beverage':
         return const Color(0xFF2196F3);
-      case 'Snacks':
+      case 'Snack':
         return const Color(0xFFFF9800);
-      case 'Spices':
+      case 'Spice':
         return const Color(0xFF607D8B);
       default:
         return const Color(0xFF9C27B0);
