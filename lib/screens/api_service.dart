@@ -8,7 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class ApiService {
   static const String _baseUrl = 'https://api.spoonacular.com';
-  static const String _apiKey = '6d495b2ad5f74b1b8fb8536e2d5beeca';
+  // static const String _apiKey = '6d495b2ad5f74b1b8fb8536e2d5beeca';
+  static const String _apiKey = 'ed8a53e2f8484d7f8daebe22b7e613bc';
   // static String get _apiKey {
   //   return dotenv.get('SPOONACULAR_API_KEY');
   // }

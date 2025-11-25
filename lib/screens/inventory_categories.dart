@@ -573,7 +573,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                   backgroundColor: Colors.white,
                                   foregroundColor: _categoryColor,
                                 ),
-                                child: Text(TranslationHelper.t('Add Item', 'آئٹم شامل کریں')),
+                                child: Text(TranslationHelper.t('Add', ' شامل')),
                               ),
                             ],
                           ),
