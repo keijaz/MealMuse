@@ -448,19 +448,48 @@ class _RecipesScreenState extends State<RecipesScreen> {
     );
   }
 
+  // Helper method to build ingredient status chips
+  Widget _buildIngredientStatus(String text, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          color: color,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
   Widget _buildRecipeCard(Map<String, dynamic> recipe) {
     final isDarkMode = ThemeProvider().darkModeEnabled;
     final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
     final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
     final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
+    final presentColor = isDarkMode ? const Color(0xFF4CAF50) : Colors.green[700];
+    final missingColor = isDarkMode ? const Color(0xFFF44336) : Colors.red[700];
     
     // Handle different response formats
     final String recipeTitle = recipe['title'] ?? 'Untitled Recipe';
     final String imageUrl = recipe['image'] ?? 'https://via.placeholder.com/100x100';
     final int? missedIngredientCount = recipe['missedIngredientCount'];
+    final int? usedIngredientCount = recipe['usedIngredientCount'];
     final int? readyInMinutes = recipe['readyInMinutes'];
     final int? healthScore = recipe['healthScore'];
     final int? aggregateLikes = recipe['aggregateLikes'];
+    
+    // Extract ingredients information
+    final List<dynamic> usedIngredients = recipe['usedIngredients'] ?? [];
+    final List<dynamic> missedIngredients = recipe['missedIngredients'] ?? [];
+    final List<dynamic> extendedIngredients = recipe['extendedIngredients'] ?? [];
 
     return Card(
       color: cardBg,
@@ -502,23 +531,77 @@ class _RecipesScreenState extends State<RecipesScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         color: textColor,
-                        // fontWeight removed due to analyzer constraint
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     
-                    // Show information based on available data
-                    if (missedIngredientCount != null)
-                      Text(
-                        'Missing ingredients: $missedIngredientCount',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: subtitleColor,
-                        ),
+                    // Ingredients Status - Present in Pantry
+                    if (usedIngredientCount != null && usedIngredientCount > 0)
+                      _buildIngredientStatus(
+                        'In Pantry: $usedIngredientCount',
+                        presentColor!,
                       ),
                     
+                    // Ingredients Status - Missing
+                    if (missedIngredientCount != null && missedIngredientCount > 0)
+                      _buildIngredientStatus(
+                        'Missing: $missedIngredientCount',
+                        missingColor!,
+                      ),
+                    
+                    // Fallback for complexSearch results
+                    if ((usedIngredientCount == null || usedIngredientCount == 0) && 
+                        (missedIngredientCount == null || missedIngredientCount == 0) &&
+                        extendedIngredients.isNotEmpty)
+                      FutureBuilder<Set<String>>(
+                        future: ApiService.getPantryIngredientNames(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return _buildIngredientStatus('Checking ingredients...', Colors.grey);
+                          }
+                          
+                          if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                            final pantryIngredients = snapshot.data!;
+                            int presentCount = 0;
+                            int totalCount = extendedIngredients.length;
+                            
+                            // Count ingredients present in pantry
+                            for (final ingredient in extendedIngredients) {
+                              final ingredientName = (ingredient['name']?.toString() ?? 
+                                                    ingredient['nameClean']?.toString() ?? 
+                                                    '').toLowerCase().trim();
+                              if (ingredientName.isNotEmpty) {
+                                // Check if any pantry ingredient contains this ingredient name or vice versa
+                                final isPresent = pantryIngredients.any((pantryIngredient) =>
+                                  pantryIngredient.contains(ingredientName) || 
+                                  ingredientName.contains(pantryIngredient)
+                                );
+                                if (isPresent) presentCount++;
+                              }
+                            }
+                            
+                            final missingCount = totalCount - presentCount;
+                            
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (presentCount > 0)
+                                  _buildIngredientStatus('In Pantry: $presentCount', presentColor!),
+                                if (missingCount > 0)
+                                  _buildIngredientStatus('Missing: $missingCount', missingColor!),
+                              ],
+                            );
+                          }
+                          
+                          return _buildIngredientStatus('Ingredients: ${extendedIngredients.length}', Colors.grey);
+                        },
+                      ),
+                    
+                    const SizedBox(height: 4),
+                    
+                    // Additional recipe information
                     if (readyInMinutes != null)
                       Text(
                         'Ready in: $readyInMinutes minutes',
@@ -548,6 +631,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
                     
                     // Fallback if no specific data is available
                     if (missedIngredientCount == null && 
+                        usedIngredientCount == null &&
                         readyInMinutes == null && 
                         healthScore == null && 
                         aggregateLikes == null)

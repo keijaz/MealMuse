@@ -245,20 +245,20 @@ class _SavedRecipesScreenState extends State<SavedRecipesScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Likes: ${recipeData['likes'] ?? 0}',
-              style: TextStyle(color: subtitleColor, fontSize: 12),
-            ),
-            if (recipeData['missedIngredientCount'] != null)
-              Text(
-                'Missing ingredients: ${recipeData['missedIngredientCount']}',
-                style: TextStyle(color: subtitleColor, fontSize: 12),
-              ),
-          ],
-        ),
+        // subtitle: Column(
+        //   crossAxisAlignment: CrossAxisAlignment.start,
+        //   children: [
+        //     Text(
+        //       'Likes: ${recipeData['likes'] ?? 0}',
+        //       style: TextStyle(color: subtitleColor, fontSize: 12),
+        //     ),
+        //     if (recipeData['missedIngredientCount'] != null)
+        //       Text(
+        //         'Missing ingredients: ${recipeData['missedIngredientCount']}',
+        //         style: TextStyle(color: subtitleColor, fontSize: 12),
+        //       ),
+        //   ],
+        // ),
         trailing: PopupMenuButton<String>(
           icon: Icon(Icons.more_vert, color: subtitleColor),
           itemBuilder: (context) => [

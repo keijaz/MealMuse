@@ -588,7 +588,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
           },
         ),
         title: Text(
-          TranslationHelper.t('Add Item', 'چیز شامل کریں'),
+          TranslationHelper.t('Add', 'چیز شامل کریں'),
           style: TextStyle(
             color: textColor,
             // fontWeight removed due to analyzer constraint

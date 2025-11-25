@@ -58,7 +58,7 @@ class _InventoryCategoriesScreenState extends State<InventoryCategoriesScreen> {
   void _onLocaleChanged() {
     setState(() {});
   }
-
+ 
   String _translateCategoryName(String name) {
     switch (name.toLowerCase()) {
       case 'vegetables':

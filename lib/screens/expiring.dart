@@ -10,13 +10,15 @@ import 'navbar.dart';
 class ExpiringItem {
   final String name;
   final int count;
+  final String unit;
   final String expiry;
   final IconData icon;
-  final DateTime expiryDate; // Added for sorting
+  final DateTime expiryDate;
 
   const ExpiringItem({
     required this.name,
     required this.count,
+    required this.unit,
     required this.expiry,
     required this.icon,
     required this.expiryDate,
@@ -105,13 +107,15 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
           final category = data['category'] as String? ?? 'Other';
           final icon = _getIconForCategory(category);
 
-          // Parse quantity
+          // Parse quantity and unit
           final quantityStr = data['quantity'] as String? ?? '0';
           final quantity = int.tryParse(quantityStr) ?? 0;
+          final unit = data['unit'] as String? ?? TranslationHelper.t('pcs', 'عدد');
 
           items.add(ExpiringItem(
             name: data['name'] as String? ?? TranslationHelper.t('Unknown Item', 'نامعلوم آئٹم'),
             count: quantity,
+            unit: unit,
             expiry: expiryText,
             icon: icon,
             expiryDate: expiryDate,
@@ -159,12 +163,18 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
     }
   }
 
+
   // Reusable widget for the item card in the list
   Widget _buildItemCard(ExpiringItem item) {
     final isDarkMode = ThemeProvider().darkModeEnabled;
     final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : _primaryWhite;
     final textColor = isDarkMode ? const Color(0xFFE1E1E1) : _primaryBlack;
     final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
+    
+    // Calculate if item is expiring in 3 weeks or less (including expired items)
+    final now = DateTime.now();
+    final daysUntilExpiry = item.expiryDate.difference(now).inDays;
+    final showWarning = daysUntilExpiry <= 21; // 3 weeks = 21 days
     
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
@@ -200,7 +210,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
                   Row(
                     children: [
                       Text(
-                        '${TranslationHelper.t('Count', 'تعداد')}: ${item.count}',
+                        '${TranslationHelper.t('Count', 'تعداد')}: ${item.count} ${item.unit}',
                         style: TextStyle(fontSize: 14, color: subtitleColor),
                       ),
                       const SizedBox(width: 10),
@@ -213,26 +223,27 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
                 ],
               ),
             ),
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: _primaryRed,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  '!',
-                  style: TextStyle(
-                    color: _primaryWhite,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    height: 1.0,
+            if (showWarning)
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _primaryRed,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    '!',
+                    style: TextStyle(
+                      color: _primaryWhite,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      height: 1.0,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -359,13 +370,13 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
                     titlePadding: EdgeInsets.zero,
                     title: SafeArea(
                       child: Padding(
-                        padding: const EdgeInsets.only(top: 20.0, left: 15.0, right: 15.0), // ADJUST VERTICAL POSITION: Change top value to move up/down
+                        padding: const EdgeInsets.only(top: 20.0, left: 15.0, right: 15.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Padding(
-                              padding: const EdgeInsets.only(left: 0.0, top: 0.0), // Move back button left/up
+                              padding: const EdgeInsets.only(left: 0.0, top: 0.0),
                               child: IconButton(
                                 icon: const Icon(Icons.arrow_back_ios_new, color: _primaryWhite, size: 24),
                                 onPressed: () {
@@ -384,7 +395,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 48), // Spacer to balance the back button
+                            const SizedBox(width: 48),
                           ],
                         ),
                       ),

@@ -52,6 +52,32 @@ class ApiService {
     }
   }
 
+  // Add this method to ApiService class
+  static Future<Set<String>> getPantryIngredientNames() async {
+    final user = _auth.currentUser;
+    if (user == null) return {};
+
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('inventory')
+          .get();
+
+      final ingredientNames = querySnapshot.docs
+          .map((doc) => doc.data()['name'] as String?)
+          .where((name) => name != null && name.isNotEmpty)
+          .map((name) => name!.toLowerCase().trim())
+          .toSet();
+
+      print('Found pantry ingredient names: $ingredientNames');
+      return ingredientNames;
+    } catch (e) {
+      print('Error fetching pantry ingredient names: $e');
+      return {};
+    }
+  }
+
   // Fetch recipes using complexSearch with filters
   static Future<List<dynamic>> fetchRecipesWithComplexSearch({
     required String sort,
@@ -124,18 +150,19 @@ class ApiService {
   }
 
   // Fetch detailed recipe information by ID
-  static Future<Map<String, dynamic>> fetchRecipeDetails(int recipeId) async {
-    try {
-      // Check internet connection first
-      final hasConnection = await hasInternetConnection();
-      if (!hasConnection) {
-        throw Exception('No internet connection. Please check your network settings.');
-      }
+  // Update the fetchRecipeDetails method in ApiService class
+static Future<Map<String, dynamic>> fetchRecipeDetails(int recipeId) async {
+  try {
+    // Check internet connection first
+    final hasConnection = await hasInternetConnection();
+    if (!hasConnection) {
+      throw Exception('No internet connection. Please check your network settings.');
+    }
 
-      // Build the URL for recipe details
-      final url = Uri.parse(
+    // Build the URL for recipe details WITH nutrition data
+    final url = Uri.parse(
         '$_baseUrl/recipes/$recipeId/information?'
-        'includeNutrition=false&'
+        'includeNutrition=true&'  // Changed from false to true
         'apiKey=$_apiKey'
       );
 
@@ -148,7 +175,15 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> recipeDetails = json.decode(response.body);
-        print('Received detailed recipe information');
+        print('Received detailed recipe information with nutrition data');
+        
+        // Debug: Check if nutrition data exists
+        if (recipeDetails.containsKey('nutrition')) {
+          print('Nutrition data found: ${recipeDetails['nutrition']}');
+        } else {
+          print('No nutrition data in response');
+        }
+        
         return recipeDetails;
       } else {
         print('Recipe Details API Error: ${response.statusCode} - ${response.body}');

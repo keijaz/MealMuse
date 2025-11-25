@@ -11,6 +11,7 @@ import 'dishes.dart';
 import 'saved_recipes.dart';
 import 'add_item_screen.dart';
 import 'settings.dart';
+import 'grocery_list.dart';
 
 // --- COLOR PALETTE (Required for local widgets) ---
 class AppColors {
@@ -207,6 +208,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     final openInventoryLabel = TranslationHelper.t('Open Inventory', 'انوینٹری کھولیں');
     final savedRecipesLabel = TranslationHelper.t('Saved Recipes', 'محفوظ ریسیپیز');
     final settingsLabel = TranslationHelper.get('settings');
+    final shoppingLabel = TranslationHelper.get('Shopping List');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -226,7 +228,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           ),
           GridButton(
             title: openInventoryLabel,
-            icon: Icons.shopping_cart_outlined,
+            icon: Icons.kitchen_outlined, 
             color: AppColors.openInventory,
             screen: InventoryCategoriesScreen(), // Navigates to InventoryScreen
           ),
@@ -237,10 +239,10 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             screen: const SavedRecipesScreen(), // Navigates to SavedRecipesScreen
           ),
           GridButton(
-            title: settingsLabel,
-            icon: Icons.settings_outlined,
+            title: shoppingLabel,
+            icon: Icons.shopping_cart_outlined,
             color: AppColors.settings,
-            screen: Setting_menu(), // Navigates to SettingsScreen
+            screen: GroceryListScreen(), // Navigates to groccery list
           ),
         ],
       ),
@@ -400,3 +402,4 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     );
   }
 }
+
