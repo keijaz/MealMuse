@@ -812,7 +812,27 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         return;
       }
 
-      // Save to Firebase Firestore
+      // Check if recipe already exists in saved recipes
+      final existingRecipeQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('saved_recipes')
+          .where('recipeId', isEqualTo: recipeId)
+          .get();
+
+      if (existingRecipeQuery.docs.isNotEmpty) {
+        // Recipe already exists
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Recipe is already in your saved collection!'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.blue,
+          ),
+        );
+        return;
+      }
+
+      // Recipe doesn't exist - save to Firebase Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -1109,7 +1129,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   elevation: 5,
                 ),
                 child: Text(
-                  'Save Recipe',
+                  'Save',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,

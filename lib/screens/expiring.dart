@@ -163,8 +163,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
     }
   }
 
-
-  // Reusable widget for the item card in the list
+  // Reusable widget for the item card in the list - SIMPLIFIED VERSION
   Widget _buildItemCard(ExpiringItem item) {
     final isDarkMode = ThemeProvider().darkModeEnabled;
     final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : _primaryWhite;
@@ -179,7 +178,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
       child: Container(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: cardBg,
           borderRadius: BorderRadius.circular(20.0),
@@ -194,10 +193,12 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
         ),
         child: Row(
           children: [
+            // Item details - takes most of the space
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Item name
                   Text(
                     item.name,
                     style: TextStyle(
@@ -205,28 +206,42 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
                       fontWeight: FontWeight.bold,
                       color: textColor,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
+                  
+                  // Quantity and expiry in a single row
                   Row(
                     children: [
+                      // Quantity without "Count:" text
                       Text(
-                        '${TranslationHelper.t('Count', 'تعداد')}: ${item.count} ${item.unit}',
+                        '${item.count} ${item.unit}',
                         style: TextStyle(fontSize: 14, color: subtitleColor),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 16),
+                      // Expiry information
                       Text(
                         '${TranslationHelper.t('Expires In', 'میعاد باقی')}: ${item.expiry}',
                         style: TextStyle(fontSize: 14, color: subtitleColor),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ],
               ),
             ),
+            
+            const SizedBox(width: 12),
+            
+            // Warning icon only
             if (showWarning)
               Container(
-                width: 40,
-                height: 40,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: _primaryRed,
                   shape: BoxShape.circle,
@@ -236,7 +251,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
                     '!',
                     style: TextStyle(
                       color: _primaryWhite,
-                      fontSize: 28,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       height: 1.0,
                     ),
@@ -275,13 +290,18 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
               color: _primaryRed,
               size: 64,
             ),
-            SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-              textAlign: TextAlign.center,
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadExpiringItems,
               style: ElevatedButton.styleFrom(
@@ -297,26 +317,34 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
 
     if (_expiringItems.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inventory_2_outlined,
-              color: _primaryRed,
-              size: 64,
-            ),
-            SizedBox(height: 16),
-            Text(
-              TranslationHelper.t('No expiring items found', 'کوئی ختم ہونے والی اشیاء نہیں ملیں'),
-              style: TextStyle(fontSize: 18, color: Colors.grey),
-            ),
-            SizedBox(height: 8),
-            Text(
-              TranslationHelper.t('Add expiry dates to your inventory items to see them here', 'اپنی انوینٹری آئٹمز میں میعاد ختم ہونے کی تاریخیں شامل کریں تاکہ یہاں دکھائی دیں'),
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.inventory_2_outlined,
+                color: _primaryRed,
+                size: 64,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                TranslationHelper.t('No expiring items found', 'کوئی ختم ہونے والی اشیاء نہیں ملیں'),
+                style: const TextStyle(fontSize: 18, color: Colors.grey),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                TranslationHelper.t('Add expiry dates to your inventory items to see them here', 'اپنی انوینٹری آئٹمز میں میعاد ختم ہونے کی تاریخیں شامل کریں تاکہ یہاں دکھائی دیں'),
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -324,10 +352,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (BuildContext context, int index) {
-          return Padding(
-            padding: index == 0 ? const EdgeInsets.only(top: 24.0) : EdgeInsets.zero,
-            child: _buildItemCard(_expiringItems[index]),
-          );
+          return _buildItemCard(_expiringItems[index]);
         },
         childCount: _expiringItems.length,
       ),
@@ -347,9 +372,9 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
       backgroundColor: backgroundColor,
       body: CustomScrollView(
         slivers: [
-          // --- Custom AppBar Section ---
+          // --- Fixed AppBar Section - Removed overflow ---
           SliverAppBar(
-            expandedHeight: 120.0,
+            expandedHeight: 100.0, // Reduced height to prevent overflow
             floating: false,
             pinned: true,
             backgroundColor: Colors.transparent,
@@ -367,37 +392,19 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
                 valueListenable: LocaleProvider().localeNotifier,
                 builder: (context, locale, _) {
                   return FlexibleSpaceBar(
-                    titlePadding: EdgeInsets.zero,
-                    title: SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 20.0, left: 15.0, right: 15.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(left: 0.0, top: 0.0),
-                              child: IconButton(
-                                icon: const Icon(Icons.arrow_back_ios_new, color: _primaryWhite, size: 24),
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 10.0),
-                              child: Text(
-                                TranslationHelper.t('Expiring Soon', 'جلد ختم ہونے والی اشیاء'),
-                                style: TextStyle(
-                                  color: _primaryWhite,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 48),
-                          ],
+                    titlePadding: const EdgeInsets.only(bottom: 16.0), // Adjusted padding
+                    centerTitle: true,
+                    title: Container(
+                      padding: const EdgeInsets.only(bottom: 10.0),
+                      child: Text(
+                        TranslationHelper.t('Expiring Soon', 'جلد ختم ہونے والی اشیاء'),
+                        style: const TextStyle(
+                          color: _primaryWhite,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   );
@@ -406,7 +413,12 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
             ),
           ),
 
-          // --- Dynamic Content based on state ---
+          // Add some top padding to the list
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 16.0),
+          ),
+
+          // --- Dynamic Content ---
           _isLoading || _errorMessage != null || _expiringItems.isEmpty
               ? SliverFillRemaining(
                   child: _buildContent(),
