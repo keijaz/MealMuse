@@ -174,7 +174,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
     // Calculate if item is expiring in 3 weeks or less (including expired items)
     final now = DateTime.now();
     final daysUntilExpiry = item.expiryDate.difference(now).inDays;
-    final showWarning = daysUntilExpiry <= 21; // 3 weeks = 21 days
+    final showWarning = daysUntilExpiry <= 14; // 2 weeks
     
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),

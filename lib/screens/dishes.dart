@@ -45,7 +45,7 @@ class RecipeApp extends StatelessWidget {
   }
 }
 
-// --- 1. The Filter Screen (Updated) ---
+// --- 1. The Filter Screen (Updated with Diet and Intolerance) ---
 class FilterScreen extends StatefulWidget {
   final Function(Map<String, dynamic>) onFiltersApplied;
   
@@ -64,22 +64,40 @@ class _FilterScreenState extends State<FilterScreen> {
     'random'
   ];
   
-  final List<String> cuisineOptions = [
-    'American',
-    'British',
-    'Cajun',
-    'Caribbean',
-    'Chinese',
-    'European',
-    'Indian',
-    'Italian',
-    'Korean',
-    'Middle Eastern'
+  // Diet options
+  final List<String> dietOptions = [
+    'glutenFree',
+    'ketogenic',
+    'vegetarian',
+    'lacto-vegetarian',
+    'ovo-vegetarian',
+    'vegan',
+    'pescetarian',
+    'paleo',
+    'primal',
+    'whole30'
+  ];
+  
+  // Intolerance options
+  final List<String> intoleranceOptions = [
+    'dairy',
+    'egg',
+    'gluten',
+    'grain',
+    'peanut',
+    'seafood',
+    'sesame',
+    'shellfish',
+    'soy',
+    'sulfite',
+    'treeNut',
+    'wheat'
   ];
 
   // State to track selected items
   String selectedSort = 'popularity';
-  Set<String> selectedCuisines = {};
+  Set<String> selectedDiets = {};
+  Set<String> selectedIntolerances = {};
 
   @override
   void initState() {
@@ -110,30 +128,47 @@ class _FilterScreenState extends State<FilterScreen> {
     }
   }
 
-  String _translateCuisine(String value) {
+  String _translateDiet(String value) {
     if (!_isUrdu) return value;
     switch (value) {
-      case 'American': return 'امریکی';
-      case 'British': return 'برطانوی';
-      case 'Cajun': return 'کیجون';
-      case 'Caribbean': return 'کریبین';
-      case 'Chinese': return 'چینی';
-      case 'European': return 'یورپی';
-      case 'Indian': return 'بھارتی';
-      case 'Italian': return 'اطالوی';
-      case 'Korean': return 'کوریائی';
-      case 'Middle Eastern': return 'مشرقِ وسطی';
+      case 'glutenFree': return 'گلوٹین فری';
+      case 'ketogenic': return 'کیٹوجینک';
+      case 'vegetarian': return 'سبزی خور';
+      case 'lacto-vegetarian': return 'ڈیری سبزی خور';
+      case 'ovo-vegetarian': return 'انڈے سبزی خور';
+      case 'vegan': return 'وگن';
+      case 'pescetarian': return 'مچھلی خور';
+      case 'paleo': return 'پیلیو';
+      case 'primal': return 'پرائمل';
+      case 'whole30': return 'ہول 30';
       default: return value;
     }
   }
 
-  // Helper function to build a list of selectable filter items
-  // Legacy _buildFilterSection replaced by dark-mode aware helper.
+  String _translateIntolerance(String value) {
+    if (!_isUrdu) return value;
+    switch (value) {
+      case 'dairy': return 'ڈیری';
+      case 'egg': return 'انڈہ';
+      case 'gluten': return 'گلوٹین';
+      case 'grain': return 'اناج';
+      case 'peanut': return 'مونگ پھلی';
+      case 'seafood': return 'سی فوڈ';
+      case 'sesame': return 'تل';
+      case 'shellfish': return 'شیل فش';
+      case 'soy': return 'سویا';
+      case 'sulfite': return 'سلفائٹ';
+      case 'treeNut': return 'ٹری نٹ';
+      case 'wheat': return 'گندم';
+      default: return value;
+    }
+  }
 
   void _applyFilters() {
     final filters = {
       'sort': selectedSort,
-      'cuisines': selectedCuisines.toList(),
+      'diets': selectedDiets.toList(),
+      'intolerances': selectedIntolerances.toList(),
     };
     widget.onFiltersApplied(filters);
     Navigator.pop(context);
@@ -142,7 +177,8 @@ class _FilterScreenState extends State<FilterScreen> {
   void _resetFilters() {
     setState(() {
       selectedSort = 'popularity';
-      selectedCuisines.clear();
+      selectedDiets.clear();
+      selectedIntolerances.clear();
     });
   }
 
@@ -151,7 +187,8 @@ class _FilterScreenState extends State<FilterScreen> {
     final isDarkMode = ThemeProvider().darkModeEnabled;
     final filterTitle = TranslationHelper.t('Filter', 'فلٹر');
     final sortByLabel = TranslationHelper.t('Sort By', 'ترتیب دیں');
-    final cuisineLabel = TranslationHelper.t('Cuisine', 'کھانا');
+    final dietLabel = TranslationHelper.t('Diet', 'خوراک');
+    final intoleranceLabel = TranslationHelper.t('Intolerances', 'عدم رواداری');
     final resetLabel = TranslationHelper.t('Reset', 'دوبارہ سیٹ کریں');
     final applyFiltersLabel = TranslationHelper.t('Apply Filters', 'فلٹر لاگو کریں');
 
@@ -213,10 +250,16 @@ class _FilterScreenState extends State<FilterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            // Inject colors through theme by temporarily overriding defaults
+            // Sort Section
             _buildFilterSectionWithColors(sortByLabel, sortOptions, true, chipSelectedText, chipUnselectedText, chipUnselected),
             const SizedBox(height: 10.0),
-            _buildFilterSectionWithColors(cuisineLabel, cuisineOptions, false, chipSelectedText, chipUnselectedText, chipUnselected),
+            
+            // Diet Section
+            _buildFilterSectionWithColors(dietLabel, dietOptions, false, chipSelectedText, chipUnselectedText, chipUnselected, isDiet: true),
+            const SizedBox(height: 10.0),
+            
+            // Intolerance Section
+            _buildFilterSectionWithColors(intoleranceLabel, intoleranceOptions, false, chipSelectedText, chipUnselectedText, chipUnselected, isIntolerance: true),
             
             // Apply and Reset Buttons
             const SizedBox(height: 40.0),
@@ -259,9 +302,17 @@ class _FilterScreenState extends State<FilterScreen> {
     );
   }
 
-  // Wrapper to allow dark-mode aware chip colors without rewriting original method drastically
-  Widget _buildFilterSectionWithColors(String title, List<String> items, bool isSingleSelection,
-      Color selectedTextColor, Color unselectedTextColor, Color unselectedBgColor) {
+  // Updated wrapper to handle different filter types
+  Widget _buildFilterSectionWithColors(
+    String title, 
+    List<String> items, 
+    bool isSingleSelection,
+    Color selectedTextColor, 
+    Color unselectedTextColor, 
+    Color unselectedBgColor, {
+    bool isDiet = false,
+    bool isIntolerance = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -279,17 +330,28 @@ class _FilterScreenState extends State<FilterScreen> {
           spacing: 10.0,
           runSpacing: 10.0,
           children: items.map((item) {
-            final isSelected = isSingleSelection ? selectedSort == item : selectedCuisines.contains(item);
+            final isSelected = isSingleSelection 
+                ? selectedSort == item 
+                : isDiet 
+                    ? selectedDiets.contains(item)
+                    : selectedIntolerances.contains(item);
+                    
             return GestureDetector(
               onTap: () {
                 setState(() {
                   if (isSingleSelection) {
                     selectedSort = item;
-                  } else {
+                  } else if (isDiet) {
                     if (isSelected) {
-                      selectedCuisines.remove(item);
+                      selectedDiets.remove(item);
                     } else {
-                      selectedCuisines.add(item);
+                      selectedDiets.add(item);
+                    }
+                  } else if (isIntolerance) {
+                    if (isSelected) {
+                      selectedIntolerances.remove(item);
+                    } else {
+                      selectedIntolerances.add(item);
                     }
                   }
                 });
@@ -301,7 +363,7 @@ class _FilterScreenState extends State<FilterScreen> {
                   borderRadius: BorderRadius.circular(20.0),
                 ),
                 child: Text(
-                  isSingleSelection ? _translateSort(item) : _translateCuisine(item),
+                  _getTranslatedText(item, isSingleSelection, isDiet, isIntolerance),
                   style: TextStyle(
                     fontSize: 16.0,
                     color: isSelected ? selectedTextColor : unselectedTextColor,
@@ -314,6 +376,17 @@ class _FilterScreenState extends State<FilterScreen> {
         const SizedBox(height: 10.0),
       ],
     );
+  }
+
+  String _getTranslatedText(String item, bool isSingleSelection, bool isDiet, bool isIntolerance) {
+    if (isSingleSelection) {
+      return _translateSort(item);
+    } else if (isDiet) {
+      return _translateDiet(item);
+    } else if (isIntolerance) {
+      return _translateIntolerance(item);
+    }
+    return item;
   }
 }
 
@@ -331,10 +404,11 @@ class _RecipesScreenState extends State<RecipesScreen> {
   bool _hasError = false;
   String _errorMessage = '';
   
-  // Filter state
+  // Filter state - UPDATED
   Map<String, dynamic> _currentFilters = {
     'sort': 'popularity',
-    'cuisines': [],
+    'diets': [],
+    'intolerances': [],
   };
 
   @override
@@ -363,28 +437,29 @@ class _RecipesScreenState extends State<RecipesScreen> {
     try {
       List<dynamic> recipes;
       
-      if (filters != null && (filters['cuisines'] as List).isNotEmpty) {
+      // Check if any filters are applied (diets or intolerances)
+      if (filters != null && (
+          (filters['diets'] as List).isNotEmpty || 
+          (filters['intolerances'] as List).isNotEmpty)) {
         print('Using complexSearch with filters: $filters');
         // Use complexSearch API when filters are applied
         recipes = await ApiService.fetchRecipesWithComplexSearch(
           sort: filters['sort'] ?? 'popularity',
-          cuisines: List<String>.from(filters['cuisines'] ?? []),
+          diets: List<String>.from(filters['diets'] ?? []),
+          intolerances: List<String>.from(filters['intolerances'] ?? []),
           number: 10,
         );
       } else {
-        print('Using findByIngredients (no cuisine filters)');
-        // Use findByIngredients API when no cuisine filters
+        print('Using findByIngredients (no diet/intolerance filters)');
+        // Use findByIngredients API when no diet/intolerance filters
         recipes = await ApiService.fetchRecipesByIngredients(
           number: 10,
-          ranking: 1,
+          ranking: 2,
           ignorePantry: false,
         );
       }
       
-      print('Received ${recipes.length} recipes');
-      if (recipes.isNotEmpty) {
-        print('First recipe: ${recipes[0]}');
-      }
+      print('Final result: Received ${recipes.length} recipes');
       
       setState(() {
         _recipes = recipes;
@@ -419,7 +494,8 @@ class _RecipesScreenState extends State<RecipesScreen> {
   void _clearFilters() {
     _fetchRecipes(filters: {
       'sort': 'popularity',
-      'cuisines': [],
+      'diets': [],
+      'intolerances': [],
     });
   }
 
@@ -449,211 +525,393 @@ class _RecipesScreenState extends State<RecipesScreen> {
   }
 
   // Helper method to build ingredient status chips
-  Widget _buildIngredientStatus(String text, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          color: color,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
+  // Widget _buildIngredientStatus(String text, Color color) {
+  //   return Container(
+  //     margin: const EdgeInsets.only(bottom: 4),
+  //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+  //     decoration: BoxDecoration(
+  //       color: color.withOpacity(0.1),
+  //       borderRadius: BorderRadius.circular(4),
+  //       border: Border.all(color: color.withOpacity(0.3), width: 1),
+  //     ),
+  //     child: Text(
+  //       text,
+  //       style: TextStyle(
+  //         fontSize: 12,
+  //         color: color,
+  //         fontWeight: FontWeight.w500,
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildRecipeCard(Map<String, dynamic> recipe) {
-    final isDarkMode = ThemeProvider().darkModeEnabled;
-    final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
-    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
-    final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
-    final presentColor = isDarkMode ? const Color(0xFF4CAF50) : Colors.green[700];
-    final missingColor = isDarkMode ? const Color(0xFFF44336) : Colors.red[700];
-    
-    // Handle different response formats
-    final String recipeTitle = recipe['title'] ?? 'Untitled Recipe';
-    final String imageUrl = recipe['image'] ?? 'https://via.placeholder.com/100x100';
-    final int? missedIngredientCount = recipe['missedIngredientCount'];
-    final int? usedIngredientCount = recipe['usedIngredientCount'];
-    final int? readyInMinutes = recipe['readyInMinutes'];
-    final int? healthScore = recipe['healthScore'];
-    final int? aggregateLikes = recipe['aggregateLikes'];
-    
-    // Extract ingredients information
-    final List<dynamic> usedIngredients = recipe['usedIngredients'] ?? [];
-    final List<dynamic> missedIngredients = recipe['missedIngredients'] ?? [];
-    final List<dynamic> extendedIngredients = recipe['extendedIngredients'] ?? [];
+  final isDarkMode = ThemeProvider().darkModeEnabled;
+  final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
+  final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+  final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
+  final presentColor = isDarkMode ? const Color(0xFF4CAF50) : Colors.green[700];
+  final missingColor = isDarkMode ? const Color(0xFFF44336) : Colors.red[700];
+  
+  // Get screen size for responsive design
+  final screenWidth = MediaQuery.of(context).size.width;
+  
+  // Responsive sizing based on screen width
+  final imageSize = screenWidth < 350 ? 70.0 : 80.0;
+  final titleFontSize = screenWidth < 350 ? 14.0 : 16.0;
+  final metadataFontSize = screenWidth < 350 ? 10.0 : 12.0;
+  final chipFontSize = screenWidth < 350 ? 10.0 : 11.0;
+  final horizontalPadding = screenWidth < 350 ? 8.0 : 12.0;
+  final verticalPadding = screenWidth < 350 ? 8.0 : 12.0;
+  final spacing = screenWidth < 350 ? 8.0 : 12.0;
 
-    return Card(
-      color: cardBg,
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: GestureDetector(
-        onTap: () => _navigateToRecipeDetail(recipe),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Recipe Image
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  imageUrl,
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 80,
-                      height: 80,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.fastfood, color: Colors.grey),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Recipe Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      recipeTitle,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: textColor,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+  // Handle different response formats with type-safe parsing
+  final String recipeTitle = recipe['title']?.toString() ?? 'Untitled Recipe';
+  final String imageUrl = recipe['image']?.toString() ?? 'https://via.placeholder.com/100x100';
+  
+  // Safely parse numeric values with type conversion
+  final int? missedIngredientCount = _safeParseInt(recipe['missedIngredientCount']);
+  final int? usedIngredientCount = _safeParseInt(recipe['usedIngredientCount']);
+  final int? readyInMinutes = _safeParseInt(recipe['readyInMinutes']);
+  final int? healthScore = _safeParseInt(recipe['healthScore']);
+  final int? aggregateLikes = _safeParseInt(recipe['aggregateLikes']);
+  
+  // Extract ingredients information
+  final List<dynamic> usedIngredients = recipe['usedIngredients'] ?? [];
+  final List<dynamic> missedIngredients = recipe['missedIngredients'] ?? [];
+  final List<dynamic> extendedIngredients = recipe['extendedIngredients'] ?? [];
+
+  return Card(
+    color: cardBg,
+    elevation: 2,
+    margin: EdgeInsets.symmetric(
+      vertical: 8,
+      horizontal: screenWidth < 350 ? 12.0 : 16.0,
+    ),
+    child: GestureDetector(
+      onTap: () => _navigateToRecipeDetail(recipe),
+      child: Padding(
+        padding: EdgeInsets.all(horizontalPadding),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Recipe Image - Responsive size
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                imageUrl,
+                width: imageSize,
+                height: imageSize,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: imageSize,
+                    height: imageSize,
+                    color: Colors.grey[300],
+                    child: Icon(Icons.fastfood, 
+                      color: Colors.grey,
+                      size: imageSize * 0.4,
                     ),
-                    const SizedBox(height: 8),
-                    
-                    // Ingredients Status - Present in Pantry
-                    if (usedIngredientCount != null && usedIngredientCount > 0)
-                      _buildIngredientStatus(
-                        'In Pantry: $usedIngredientCount',
-                        presentColor!,
-                      ),
-                    
-                    // Ingredients Status - Missing
-                    if (missedIngredientCount != null && missedIngredientCount > 0)
-                      _buildIngredientStatus(
-                        'Missing: $missedIngredientCount',
-                        missingColor!,
-                      ),
-                    
-                    // Fallback for complexSearch results
-                    if ((usedIngredientCount == null || usedIngredientCount == 0) && 
-                        (missedIngredientCount == null || missedIngredientCount == 0) &&
-                        extendedIngredients.isNotEmpty)
-                      FutureBuilder<Set<String>>(
-                        future: ApiService.getPantryIngredientNames(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return _buildIngredientStatus('Checking ingredients...', Colors.grey);
-                          }
-                          
-                          if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                            final pantryIngredients = snapshot.data!;
-                            int presentCount = 0;
-                            int totalCount = extendedIngredients.length;
-                            
-                            // Count ingredients present in pantry
-                            for (final ingredient in extendedIngredients) {
-                              final ingredientName = (ingredient['name']?.toString() ?? 
-                                                    ingredient['nameClean']?.toString() ?? 
-                                                    '').toLowerCase().trim();
-                              if (ingredientName.isNotEmpty) {
-                                // Check if any pantry ingredient contains this ingredient name or vice versa
-                                final isPresent = pantryIngredients.any((pantryIngredient) =>
-                                  pantryIngredient.contains(ingredientName) || 
-                                  ingredientName.contains(pantryIngredient)
-                                );
-                                if (isPresent) presentCount++;
-                              }
-                            }
-                            
-                            final missingCount = totalCount - presentCount;
-                            
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (presentCount > 0)
-                                  _buildIngredientStatus('In Pantry: $presentCount', presentColor!),
-                                if (missingCount > 0)
-                                  _buildIngredientStatus('Missing: $missingCount', missingColor!),
-                              ],
-                            );
-                          }
-                          
-                          return _buildIngredientStatus('Ingredients: ${extendedIngredients.length}', Colors.grey);
-                        },
-                      ),
-                    
-                    const SizedBox(height: 4),
-                    
-                    // Additional recipe information
-                    if (readyInMinutes != null)
-                      Text(
-                        'Ready in: $readyInMinutes minutes',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: subtitleColor,
-                        ),
-                      ),
-                    
-                    if (healthScore != null)
-                      Text(
-                        'Health score: $healthScore',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: subtitleColor,
-                        ),
-                      ),
-                    
-                    if (aggregateLikes != null)
-                      Text(
-                        'Likes: $aggregateLikes',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: subtitleColor,
-                        ),
-                      ),
-                    
-                    // Fallback if no specific data is available
-                    if (missedIngredientCount == null && 
-                        usedIngredientCount == null &&
-                        readyInMinutes == null && 
-                        healthScore == null && 
-                        aggregateLikes == null)
-                      Text(
-                        'Tap for details',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: subtitleColor,
-                        ),
-                      ),
-                  ],
-                ),
+                  );
+                },
               ),
-            ],
+            ),
+            SizedBox(width: spacing),
+            // Recipe Details - Expanded to fill available space
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Recipe Title - Responsive font size
+                  Text(
+                    recipeTitle,
+                    style: TextStyle(
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.w500,
+                      color: textColor,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: screenWidth < 350 ? 6 : 8),
+                  
+                  // Ingredients Status Section
+                  _buildIngredientsStatusSection(
+                    usedIngredientCount: usedIngredientCount,
+                    missedIngredientCount: missedIngredientCount,
+                    extendedIngredients: extendedIngredients,
+                    presentColor: presentColor,
+                    missingColor: missingColor,
+                    chipFontSize: chipFontSize,
+                  ),
+                  
+                  SizedBox(height: screenWidth < 350 ? 6 : 8),
+                  
+                  // Recipe Metadata - Compact responsive layout
+                  _buildRecipeMetadata(
+                    readyInMinutes: readyInMinutes,
+                    healthScore: healthScore,
+                    aggregateLikes: aggregateLikes,
+                    subtitleColor: subtitleColor,
+                    usedIngredientCount: usedIngredientCount,
+                    missedIngredientCount: missedIngredientCount,
+                    metadataFontSize: metadataFontSize,
+                    screenWidth: screenWidth,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+// Helper method to build ingredients status section
+Widget _buildIngredientsStatusSection({
+  required int? usedIngredientCount,
+  required int? missedIngredientCount,
+  required List<dynamic> extendedIngredients,
+  required Color? presentColor,
+  required Color? missingColor,
+  required double chipFontSize,
+}) {
+  // If we have direct counts from findByIngredients API
+  if (usedIngredientCount != null || missedIngredientCount != null) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: [
+        if (usedIngredientCount != null && usedIngredientCount > 0)
+          _buildIngredientStatus(
+            'In Pantry: $usedIngredientCount', 
+            presentColor!,
+            fontSize: chipFontSize,
           ),
+        if (missedIngredientCount != null && missedIngredientCount > 0)
+          _buildIngredientStatus(
+            'Missing: $missedIngredientCount', 
+            missingColor!,
+            fontSize: chipFontSize,
+          ),
+      ],
+    );
+  }
+  
+  // For complexSearch results, use FutureBuilder to check against pantry
+  if (extendedIngredients.isNotEmpty) {
+    return FutureBuilder<Set<String>>(
+      future: ApiService.getPantryIngredientNames(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildIngredientStatus(
+            'Checking...', 
+            Colors.grey,
+            fontSize: chipFontSize,
+          );
+        }
+        
+        if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+          final pantryIngredients = snapshot.data!;
+          int presentCount = 0;
+          final int totalCount = extendedIngredients.length;
+          
+          for (final ingredient in extendedIngredients) {
+            final ingredientName = (ingredient['name']?.toString() ?? 
+                                  ingredient['nameClean']?.toString() ?? 
+                                  '').toLowerCase().trim();
+            if (ingredientName.isNotEmpty) {
+              final isPresent = pantryIngredients.any((pantryIngredient) =>
+                pantryIngredient.contains(ingredientName) || 
+                ingredientName.contains(pantryIngredient)
+              );
+              if (isPresent) presentCount++;
+            }
+          }
+          
+          final missingCount = totalCount - presentCount;
+          
+          return Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              if (presentCount > 0)
+                _buildIngredientStatus(
+                  'In Pantry: $presentCount', 
+                  presentColor!,
+                  fontSize: chipFontSize,
+                ),
+              if (missingCount > 0)
+                _buildIngredientStatus(
+                  'Missing: $missingCount', 
+                  missingColor!,
+                  fontSize: chipFontSize,
+                ),
+            ],
+          );
+        }
+        
+        return _buildIngredientStatus(
+          'Ingredients: ${extendedIngredients.length}', 
+          Colors.grey,
+          fontSize: chipFontSize,
+        );
+      },
+    );
+  }
+  
+  return const SizedBox.shrink();
+}
+
+// Helper method to build recipe metadata in a compact layout
+Widget _buildRecipeMetadata({
+  required int? readyInMinutes,
+  required int? healthScore,
+  required int? aggregateLikes,
+  required Color? subtitleColor,
+  required int? usedIngredientCount,
+  required int? missedIngredientCount,
+  required double metadataFontSize,
+  required double screenWidth,
+}) {
+  final metadataItems = <Widget>[];
+  
+  // Add time if available - use shorter text on small screens
+  if (readyInMinutes != null && readyInMinutes > 0) {
+    final timeText = screenWidth < 350 ? '$readyInMinutes min' : 'Ready: $readyInMinutes min';
+    metadataItems.add(
+      Flexible(
+        child: Text(
+          timeText,
+          style: TextStyle(
+            fontSize: metadataFontSize,
+            color: subtitleColor,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
   }
+  
+  // Add health score if available - use shorter text on small screens
+  if (healthScore != null && healthScore > 0) {
+    if (metadataItems.isNotEmpty) {
+      metadataItems.add(SizedBox(width: screenWidth < 350 ? 6 : 8));
+    }
+    final healthText = screenWidth < 350 ? 'Health: $healthScore' : 'Health: $healthScore';
+    metadataItems.add(
+      Flexible(
+        child: Text(
+          healthText,
+          style: TextStyle(
+            fontSize: metadataFontSize,
+            color: subtitleColor,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+  
+  // Add likes if available - use shorter text on small screens
+  // if (aggregateLikes != null && aggregateLikes > 0) {
+  //   if (metadataItems.isNotEmpty) {
+  //     metadataItems.add(SizedBox(width: screenWidth < 350 ? 6 : 8));
+  //   }
+  //   final likesText = screenWidth < 350 ? '❤️ $aggregateLikes' : 'Likes: $aggregateLikes';
+  //   metadataItems.add(
+  //     Flexible(
+  //       child: Text(
+  //         likesText,
+  //         style: TextStyle(
+  //           fontSize: metadataFontSize,
+  //           color: subtitleColor,
+  //         ),
+  //         maxLines: 1,
+  //         overflow: TextOverflow.ellipsis,
+  //       ),
+  //     ),
+  //   );
+  // }
+  
+  // Fallback if no metadata available
+  if (metadataItems.isEmpty && 
+      (usedIngredientCount == null || usedIngredientCount == 0) && 
+      (missedIngredientCount == null || missedIngredientCount == 0)) {
+    metadataItems.add(
+      Text(
+        'Tap for details',
+        style: TextStyle(
+          fontSize: metadataFontSize,
+          color: subtitleColor,
+        ),
+      ),
+    );
+  }
+  
+  // Use Row with Flexible widgets for better control on small screens
+  if (screenWidth < 350) {
+    return Row(
+      children: metadataItems,
+    );
+  }
+  
+  return Wrap(
+    spacing: 8,
+    runSpacing: 4,
+    children: metadataItems,
+  );
+}
+
+// Updated ingredient status chip with responsive sizing
+Widget _buildIngredientStatus(String text, Color color, {required double fontSize}) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: color.withOpacity(0.3), width: 1),
+    ),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: fontSize, // Correctly used in TextStyle
+        color: color,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  );
+}
+
+// Helper method to safely parse numeric values from API response
+int? _safeParseInt(dynamic value) {
+  if (value == null) return null;
+  
+  try {
+    if (value is int) {
+      return value;
+    } else if (value is double) {
+      return value.round();
+    } else if (value is String) {
+      return int.tryParse(value);
+    } else {
+      return null;
+    }
+  } catch (e) {
+    print('Error parsing integer value: $value, error: $e');
+    return null;
+  }
+}
+
 
   Widget _buildFilterChip() {
-    final hasActiveFilters = (_currentFilters['cuisines'] as List).isNotEmpty;
+    final hasDietFilters = (_currentFilters['diets'] as List).isNotEmpty;
+    final hasIntoleranceFilters = (_currentFilters['intolerances'] as List).isNotEmpty;
+    final hasActiveFilters = hasDietFilters || hasIntoleranceFilters;
     
     if (!hasActiveFilters) {
       return const SizedBox.shrink();
@@ -663,14 +921,25 @@ class _RecipesScreenState extends State<RecipesScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
         children: [
-          Chip(
-            label: Text(
-              '${(_currentFilters['cuisines'] as List).length} cuisine(s) selected',
+          if (hasDietFilters)
+            Chip(
+              label: Text(
+                '${(_currentFilters['diets'] as List).length} diet(s)',
+              ),
+              backgroundColor: _primaryColor30,
+              deleteIcon: const Icon(Icons.close),
+              onDeleted: _clearFilters,
             ),
-            backgroundColor: _primaryColor30,
-            deleteIcon: const Icon(Icons.close),
-            onDeleted: _clearFilters,
-          ),
+          if (hasDietFilters && hasIntoleranceFilters) const SizedBox(width: 8),
+          if (hasIntoleranceFilters)
+            Chip(
+              label: Text(
+                '${(_currentFilters['intolerances'] as List).length} intolerance(s)',
+              ),
+              backgroundColor: _primaryColor30,
+              deleteIcon: const Icon(Icons.close),
+              onDeleted: _clearFilters,
+            ),
           const SizedBox(width: 8),
           Text(
             'Sorted by: ${_currentFilters['sort']}',
@@ -711,7 +980,6 @@ class _RecipesScreenState extends State<RecipesScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 20.0,
-                // fontWeight removed due to analyzer constraint
                 color: textColor,
                 height: 1.5,
               ),

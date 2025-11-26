@@ -80,22 +80,105 @@ class ApiService {
   }
 
   // Fetch recipes using complexSearch with filters
+  // Update the fetchRecipesWithComplexSearch method in ApiService class
   static Future<List<dynamic>> fetchRecipesWithComplexSearch({
+  required String sort,
+  List<String> diets = const [],
+  List<String> intolerances = const [],
+  int number = 10,
+}) async {
+  try {
+    // Check internet connection first
+    final hasConnection = await hasInternetConnection();
+    if (!hasConnection) {
+      throw Exception('No internet connection. Please check your network settings.');
+    }
+
+    // Get ingredients from inventory for query
+    final ingredients = await getInventoryIngredients();
+    
+    // Build query parameters
+    final params = <String, String>{
+      'number': number.toString(),
+      'apiKey': _apiKey,
+      'sort': sort,
+      'addRecipeInformation': 'true',
+      'fillIngredients': 'true',
+      'ranking': '2', // Maximize used ingredients
+    };
+
+    // Add diet filter if selected
+    if (diets.isNotEmpty) {
+      params['diet'] = diets.first;
+      print('Applied diet filter: ${diets.first}');
+    }
+
+    // Add intolerance filter if selected
+    if (intolerances.isNotEmpty) {
+      params['intolerances'] = intolerances.join(',');
+      print('Applied intolerances: ${intolerances.join(',')}');
+    }
+
+    // STRATEGY 1: Try with inventory ingredients first
+    if (ingredients.isNotEmpty) {
+      // Use a reasonable number of ingredients
+      final uniqueIngredients = ingredients.toSet().take(8).toList();
+      params['includeIngredients'] = uniqueIngredients.join(',');
+      print('Trying with inventory ingredients: ${uniqueIngredients.join(', ')}');
+    }
+
+    // Build the URL
+    final url = Uri.parse('$_baseUrl/recipes/complexSearch').replace(
+      queryParameters: params,
+    );
+
+    print('ComplexSearch API Request URL: ${url.toString()}');
+
+    // Make the API call with timeout
+    final response = await http.get(url).timeout(const Duration(seconds: 30));
+
+    print('ComplexSearch API Response Status: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      final List<dynamic> recipes = data['results'] ?? [];
+      final int totalResults = data['totalResults'] ?? 0;
+      
+      print('Received ${recipes.length} recipes from complexSearch (Total available: $totalResults)');
+      
+      // FALLBACK: If no recipes found with inventory, try without inventory (just filters)
+      if (recipes.isEmpty && ingredients.isNotEmpty) {
+        print('No recipes found with inventory ingredients. Falling back to filters only...');
+        return await _fallbackToFiltersOnly(
+          sort: sort,
+          diets: diets,
+          intolerances: intolerances,
+          number: number,
+        );
+      }
+      
+      return recipes;
+    } else {
+      print('ComplexSearch API Error: ${response.statusCode} - ${response.body}');
+      throw Exception('Failed to load recipes: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error fetching recipes with complexSearch: $e');
+    throw e;
+  }
+}
+
+// Fallback method that uses only filters (no inventory ingredients)
+  static Future<List<dynamic>> _fallbackToFiltersOnly({
     required String sort,
-    required List<String> cuisines,
-    int number = 10,
+    required List<String> diets,
+    required List<String> intolerances,
+    required int number,
   }) async {
     try {
-      // Check internet connection first
-      final hasConnection = await hasInternetConnection();
-      if (!hasConnection) {
-        throw Exception('No internet connection. Please check your network settings.');
-      }
-
-      // Get ingredients from inventory for query
-      final ingredients = await getInventoryIngredients();
+      print('Trying fallback: Using only filters without inventory ingredients');
       
-      // Build query parameters
+      // Build query parameters WITHOUT includeIngredients
       final params = <String, String>{
         'number': number.toString(),
         'apiKey': _apiKey,
@@ -104,14 +187,16 @@ class ApiService {
         'fillIngredients': 'true',
       };
 
-      // Add cuisine filter if selected
-      if (cuisines.isNotEmpty) {
-        params['cuisine'] = cuisines.join(',');
+      // Add diet filter if selected
+      if (diets.isNotEmpty) {
+        params['diet'] = diets.first;
+        print('Fallback - Applied diet filter: ${diets.first}');
       }
 
-      // Add ingredients to query if available
-      if (ingredients.isNotEmpty) {
-        params['includeIngredients'] = ingredients.join(',');
+      // Add intolerance filter if selected
+      if (intolerances.isNotEmpty) {
+        params['intolerances'] = intolerances.join(',');
+        print('Fallback - Applied intolerances: ${intolerances.join(',')}');
       }
 
       // Build the URL
@@ -119,82 +204,81 @@ class ApiService {
         queryParameters: params,
       );
 
-      print('ComplexSearch API Request URL: $url');
+      print('Fallback API Request URL: ${url.toString()}');
 
       // Make the API call with timeout
       final response = await http.get(url).timeout(const Duration(seconds: 30));
 
-      print('ComplexSearch API Response Status: ${response.statusCode}');
+      print('Fallback API Response Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final List<dynamic> recipes = data['results'] ?? [];
-        print('Received ${recipes.length} recipes from complexSearch');
+        final int totalResults = data['totalResults'] ?? 0;
         
-        // Debug: Log first recipe structure
+        print('Fallback received ${recipes.length} recipes (Total available: $totalResults)');
+        
         if (recipes.isNotEmpty) {
-          print('First recipe keys: ${recipes[0].keys}');
-          print('First recipe title: ${recipes[0]['title']}');
-          print('First recipe image: ${recipes[0]['image']}');
+          print('Fallback successful! Found recipes using only filters');
         } else {
-          print('No recipes found in complexSearch response');
+          print('No recipes found even with filters only');
         }
+        
         return recipes;
       } else {
-        print('ComplexSearch API Error: ${response.statusCode} - ${response.body}');
-        throw Exception('Failed to load recipes: ${response.statusCode}');
+        print('Fallback API Error: ${response.statusCode} - ${response.body}');
+        return []; // Return empty rather than throwing error in fallback
       }
     } catch (e) {
-      print('Error fetching recipes with complexSearch: $e');
-      throw e;
+      print('Error in fallback: $e');
+      return []; // Return empty rather than throwing error in fallback
     }
   }
-
   // Fetch detailed recipe information by ID
   // Update the fetchRecipeDetails method in ApiService class
-static Future<Map<String, dynamic>> fetchRecipeDetails(int recipeId) async {
-  try {
-    // Check internet connection first
-    final hasConnection = await hasInternetConnection();
-    if (!hasConnection) {
-      throw Exception('No internet connection. Please check your network settings.');
-    }
-
-    // Build the URL for recipe details WITH nutrition data
-    final url = Uri.parse(
-        '$_baseUrl/recipes/$recipeId/information?'
-        'includeNutrition=true&'  // Changed from false to true
-        'apiKey=$_apiKey'
-      );
-
-      print('Recipe Details API Request URL: $url');
-
-      // Make the API call with timeout
-      final response = await http.get(url).timeout(const Duration(seconds: 30));
-
-      print('Recipe Details API Response Status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> recipeDetails = json.decode(response.body);
-        print('Received detailed recipe information with nutrition data');
-        
-        // Debug: Check if nutrition data exists
-        if (recipeDetails.containsKey('nutrition')) {
-          print('Nutrition data found: ${recipeDetails['nutrition']}');
-        } else {
-          print('No nutrition data in response');
-        }
-        
-        return recipeDetails;
-      } else {
-        print('Recipe Details API Error: ${response.statusCode} - ${response.body}');
-        throw Exception('Failed to load recipe details: ${response.statusCode}');
+  static Future<Map<String, dynamic>> fetchRecipeDetails(int recipeId) async {
+    try {
+      // Check internet connection first
+      final hasConnection = await hasInternetConnection();
+      if (!hasConnection) {
+        throw Exception('No internet connection. Please check your network settings.');
       }
-    } catch (e) {
-      print('Error fetching recipe details: $e');
-      throw e;
+
+      // Build the URL for recipe details WITH nutrition data
+      final url = Uri.parse(
+          '$_baseUrl/recipes/$recipeId/information?'
+          'includeNutrition=true&'  // Changed from false to true
+          'apiKey=$_apiKey'
+        );
+
+        print('Recipe Details API Request URL: $url');
+
+        // Make the API call with timeout
+        final response = await http.get(url).timeout(const Duration(seconds: 30));
+
+        print('Recipe Details API Response Status: ${response.statusCode}');
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> recipeDetails = json.decode(response.body);
+          print('Received detailed recipe information with nutrition data');
+          
+          // Debug: Check if nutrition data exists
+          if (recipeDetails.containsKey('nutrition')) {
+            print('Nutrition data found: ${recipeDetails['nutrition']}');
+          } else {
+            print('No nutrition data in response');
+          }
+          
+          return recipeDetails;
+        } else {
+          print('Recipe Details API Error: ${response.statusCode} - ${response.body}');
+          throw Exception('Failed to load recipe details: ${response.statusCode}');
+        }
+      } catch (e) {
+        print('Error fetching recipe details: $e');
+        throw e;
+      }
     }
-  }
 
   // Fetch recipe instructions by ID
   static Future<List<dynamic>> fetchRecipeInstructions(int recipeId) async {
