@@ -16,11 +16,12 @@ class GroceryListScreen extends StatefulWidget {
 class _GroceryListScreenState extends State<GroceryListScreen> {
   final TextEditingController _itemController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
-  final TextEditingController _unitController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   String _selectedCategory = 'Other';
+  String _selectedUnit = 'units'; // Default unit
+  
   final List<String> _categories = [
     'Vegetable',
     'Fruit',
@@ -32,6 +33,164 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
     'Spices',
     'Other'
   ];
+
+  final List<String> _unitOptions = [
+    'units',
+    'grams',
+    'KGs',
+    'liters',
+    'lbs',
+    'tablespoon',
+    'teaspoon',
+    'cups'
+  ];
+
+
+  // Update unit conversion factors to include all variations
+  final Map<String, double> _unitConversionFactors = {
+    // Weight units (base: grams)
+    'grams': 1.0,
+    'g': 1.0,
+    'gram': 1.0,
+    'kgs': 1000.0,
+    'kg': 1000.0,
+    'kilogram': 1000.0,
+    'kilograms': 1000.0,
+    'lbs': 453.592,
+    'lb': 453.592,
+    'pound': 453.592,
+    'pounds': 453.592,
+    'oz': 28.3495,
+    'ounce': 28.3495,
+    'ounces': 28.3495,
+    
+    // Volume units (base: milliliters)
+    'ml': 1.0,
+    'milliliter': 1.0,
+    'milliliters': 1.0,
+    'liters': 1000.0,
+    'liter': 1000.0,
+    'l': 1000.0,
+    'tablespoon': 14.7868,
+    'tbsp': 14.7868,
+    'tablespoons': 14.7868,
+    'teaspoon': 4.92892,
+    'tsp': 4.92892,
+    'teaspoons': 4.92892,
+    'cups': 236.588,
+    'cup': 236.588,
+    'fl oz': 29.5735,
+    'fluid ounce': 29.5735,
+    'fluid ounces': 29.5735,
+    
+    // Count units (base: units)
+    'units': 1.0,
+    'unit': 1.0,
+    'items': 1.0,
+    'item': 1.0,
+    'pieces': 1.0,
+    'piece': 1.0,
+    'pcs': 1.0,
+    'pc': 1.0,
+    '': 1.0,
+  };
+
+  // Base units for each category
+  String _getBaseUnit(String unit) {
+    final normalizedUnit = unit.toLowerCase().trim();
+    
+    if (_isWeightUnit(normalizedUnit)) return 'grams';
+    if (_isVolumeUnit(normalizedUnit)) return 'ml';
+    if (_isCountUnit(normalizedUnit)) return 'units';
+    
+    return 'units'; // default
+  }
+
+  // Convert quantity from one unit to another
+  double _convertQuantity(double quantity, String fromUnit, String toUnit) {
+    if (fromUnit.toLowerCase().trim() == toUnit.toLowerCase().trim()) {
+      return quantity;
+    }
+    
+    final fromFactor = _unitConversionFactors[fromUnit.toLowerCase().trim()] ?? 1.0;
+    final toFactor = _unitConversionFactors[toUnit.toLowerCase().trim()] ?? 1.0;
+    
+    if (fromFactor == 0 || toFactor == 0) return quantity;
+    
+    // Convert to base unit first, then to target unit
+    final baseQuantity = quantity * fromFactor;
+    return baseQuantity / toFactor;
+  }
+
+  // Format quantity for display (round to reasonable precision)
+  String _formatQuantity(double quantity, String unit) {
+    if (quantity == quantity.truncateToDouble()) {
+      return quantity.toInt().toString();
+    }
+    
+    // For very small quantities, show more decimal places
+    if (quantity < 1) {
+      return quantity.toStringAsFixed(3).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+    }
+    
+    // For larger quantities, show fewer decimal places
+    if (quantity < 10) {
+      return quantity.toStringAsFixed(2).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+    }
+    
+    return quantity.toStringAsFixed(1).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+  }
+
+  // Choose the best display unit based on quantity
+  String _chooseBestDisplayUnit(double baseQuantity, String unitCategory) {
+    if (unitCategory == 'weight') {
+      if (baseQuantity >= 1000) return 'KGs';
+      if (baseQuantity >= 1) return 'grams';
+      return 'grams';
+    } else if (unitCategory == 'volume') {
+      if (baseQuantity >= 1000) return 'liters';
+      if (baseQuantity >= 1) return 'ml';
+      return 'ml';
+    }
+    
+    return 'units';
+  }
+
+  // Get unit category
+  String _getUnitCategory(String unit) {
+    final normalizedUnit = unit.toLowerCase().trim();
+    if (_isWeightUnit(normalizedUnit)) return 'weight';
+    if (_isVolumeUnit(normalizedUnit)) return 'volume';
+    if (_isCountUnit(normalizedUnit)) return 'count';
+    return 'count';
+  }
+
+    bool _isWeightUnit(String unit) {
+    const weightUnits = {
+      'g', 'gram', 'grams', 'kg', 'kgs', 'kilogram', 'kilograms', 
+      'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds'
+    };
+    return weightUnits.contains(unit.toLowerCase().trim());
+  }
+
+  bool _isVolumeUnit(String unit) {
+    const volumeUnits = {
+      'ml', 'milliliter', 'milliliters', 'l', 'liter', 'liters', 
+      'cup', 'cups', 'tsp', 'teaspoon', 'teaspoons', 
+      'tbsp', 'tablespoon', 'tablespoons', 
+      'fl oz', 'fluid ounce', 'fluid ounces'
+    };
+    return volumeUnits.contains(unit.toLowerCase().trim());
+  }
+
+  bool _isCountUnit(String unit) {
+    const countUnits = {
+      '', 'item', 'items', 'piece', 'pieces', 'unit', 'units', 
+      'pcs', 'pc'
+    };
+    return countUnits.contains(unit.toLowerCase().trim());
+  }
+
 
   String _translateCategoryName(String name) {
     switch (name.toLowerCase()) {
@@ -68,7 +227,6 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
   void dispose() {
     _itemController.dispose();
     _quantityController.dispose();
-    _unitController.dispose();
     LocaleProvider().localeNotifier.removeListener(_onLocaleChanged);
     super.dispose();
   }
@@ -99,31 +257,12 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
     // If one unit is empty, consider them compatible (assume same unit)
     if (normalized1.isEmpty || normalized2.isEmpty) return true;
     
-    // Define compatible unit groups
-    const weightUnits = {'g', 'gram', 'grams', 'kg', 'kilogram', 'kilograms', 'oz', 'ounce', 'ounces', 'lb', 'pound', 'pounds'};
-    const volumeUnits = {'ml', 'milliliter', 'milliliters', 'l', 'liter', 'liters', 'cup', 'cups', 'tsp', 'teaspoon', 'teaspoons', 'tbsp', 'tablespoon', 'tablespoons', 'fl oz', 'fluid ounce', 'fluid ounces'};
-    const countUnits = {'', 'item', 'items', 'piece', 'pieces', 'unit', 'units', 'pcs', 'pc'};
-    const lengthUnits = {'cm', 'centimeter', 'centimeters', 'm', 'meter', 'meters', 'inch', 'inches', 'in'};
-    
     // Check if both units belong to the same category
-    final isUnit1Weight = weightUnits.contains(normalized1);
-    final isUnit2Weight = weightUnits.contains(normalized2);
-    final isUnit1Volume = volumeUnits.contains(normalized1);
-    final isUnit2Volume = volumeUnits.contains(normalized2);
-    final isUnit1Count = countUnits.contains(normalized1);
-    final isUnit2Count = countUnits.contains(normalized2);
-    final isUnit1Length = lengthUnits.contains(normalized1);
-    final isUnit2Length = lengthUnits.contains(normalized2);
-    
-    // Units are compatible if they belong to the same category
-    return (isUnit1Weight && isUnit2Weight) ||
-           (isUnit1Volume && isUnit2Volume) ||
-           (isUnit1Count && isUnit2Count) ||
-           (isUnit1Length && isUnit2Length);
+    return (_isWeightUnit(normalized1) && _isWeightUnit(normalized2)) ||
+           (_isVolumeUnit(normalized1) && _isVolumeUnit(normalized2)) ||
+           (_isCountUnit(normalized1) && _isCountUnit(normalized2));
   }
-
-  // Add item to inventory with duplicate checking
-  // Add item to inventory with duplicate checking and always set quantity to 1
+  // Add item to inventory with duplicate checking and preserve original unit
   Future<void> _addToInventory(DocumentSnapshot groceryItem) async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -132,12 +271,15 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
       final data = groceryItem.data() as Map<String, dynamic>;
       final String name = (data['name'] ?? '').toString().toLowerCase().trim();
       final String originalName = data['originalName'] ?? name;
-      // Always set quantity to 1 when moving to inventory
-      final double amount = 1.0; // Always 1 unit
+      // Use the original quantity and unit from grocery list - note the field is 'amount' in grocery list
+      final double amount = _parseQuantity(data['amount'] ?? '1');
       final String unit = (data['unit'] ?? '').toString();
       final String groceryCategory = data['category'] ?? 'Other';
       final String recipeSource = data['recipeSource'] ?? '';
       final String note = data['note'] ?? '';
+
+      // Debug logging
+      print('Moving to inventory: $originalName, amount: $amount, unit: $unit');
 
       // Check if item already exists in inventory
       final existingInventoryQuery = await _firestore
@@ -148,17 +290,35 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
           .get();
 
       if (existingInventoryQuery.docs.isNotEmpty) {
-        // Item exists in inventory - update quantity to 1 and other fields
+        // Item exists in inventory - merge quantities and preserve units
         final existingDoc = existingInventoryQuery.docs.first;
         final existingData = existingDoc.data() as Map<String, dynamic>;
+        final double existingQuantity = _parseQuantity(existingData['quantity'] ?? '1');
         final String existingUnit = (existingData['unit'] ?? '').toString().toLowerCase().trim();
         final String existingCategory = existingData['category'] ?? 'Other';
         final String existingNotes = existingData['notes'] ?? '';
         
         // Check if units are compatible
         if (_areUnitsCompatible(existingUnit, unit)) {
-          // Always set quantity to 1, use existing inventory category
-          final String displayUnit = existingUnit.isNotEmpty ? existingUnit : unit;
+          // Convert both quantities to a common base unit and merge
+          final String baseUnit = _getBaseUnit(existingUnit);
+          final String unitCategory = _getUnitCategory(existingUnit);
+          
+          // Convert existing inventory quantity to base unit
+          final double existingInBase = _convertQuantity(existingQuantity, existingUnit, baseUnit);
+          
+          // Convert grocery item quantity to base unit
+          final double newInBase = _convertQuantity(amount, unit, baseUnit);
+          
+          // Merge quantities in base unit
+          final double mergedInBase = existingInBase + newInBase;
+          
+          // Choose the best display unit for the merged quantity
+          final String bestDisplayUnit = _chooseBestDisplayUnit(mergedInBase, unitCategory);
+          
+          // Convert back to the best display unit
+          final double mergedQuantity = _convertQuantity(mergedInBase, baseUnit, bestDisplayUnit);
+          final String displayQuantity = _formatQuantity(mergedQuantity, bestDisplayUnit);
           
           // Combine notes if there are any from grocery item
           String combinedNotes = existingNotes;
@@ -168,47 +328,48 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
                 : '$existingNotes\n$note';
           }
 
-          // Update all relevant fields in inventory, always setting quantity to 1
+          // Update inventory with merged quantity and best display unit
+          // Note: Inventory uses 'quantity' field (not 'amount')
           await existingDoc.reference.update({
-            'quantity': '1', // Always set to 1
-            'unit': displayUnit,
+            'quantity': displayQuantity, // Use 'quantity' for inventory
+            'unit': bestDisplayUnit,
             'updatedAt': FieldValue.serverTimestamp(),
             'notes': combinedNotes,
-            // Keep existing category, expiryDate, and other inventory-specific fields
+            // Keep existing category and other inventory-specific fields
           });
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Added $originalName to inventory'),
+                content: Text('Added $originalName to inventory: $existingQuantity $existingUnit + $amount $unit = $displayQuantity $bestDisplayUnit'),
                 backgroundColor: Colors.green,
-                duration: const Duration(seconds: 2),
+                duration: const Duration(seconds: 3),
               ),
             );
           }
         } else {
-          // Units are incompatible - add as new item with grocery category and quantity 1
+          // Units are incompatible - add as new item with original unit and quantity
           await _firestore
               .collection('users')
               .doc(user.uid)
               .collection('inventory')
               .add({
             'name': name,
-            'quantity': '1', // Always set to 1
-            'unit': unit,
+            'quantity': amount.toString(), // Use 'quantity' for inventory
+            'unit': unit, // Use original unit
             'category': groceryCategory, // Use grocery category for new items
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
             'userId': user.uid,
             'notes': note.isNotEmpty ? note : '',
-            // Set default expiry date (30 days from now) or calculate based on category
+            // Set default expiry date based on category
             'expiryDate': _calculateDefaultExpiryDate(groceryCategory),
           });
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Added $originalName to inventory (different unit, quantity set to 1)'),
+                content: Text('Added $originalName to inventory ($amount $unit)'),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 2),
               ),
@@ -216,15 +377,15 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
           }
         }
       } else {
-        // Item doesn't exist in inventory - add new item with grocery category and quantity 1
+        // Item doesn't exist in inventory - add new item with original unit and quantity
         await _firestore
             .collection('users')
             .doc(user.uid)
             .collection('inventory')
             .add({
           'name': name,
-          'quantity': '1', // Always set to 1
-          'unit': unit,
+          'quantity': amount.toString(), // Use 'quantity' for inventory
+          'unit': unit, // Use original unit
           'category': groceryCategory,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -237,7 +398,7 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Added $originalName to inventory (quantity set to 1)'),
+              content: Text('Added $originalName to inventory ($amount $unit)'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 2),
             ),
@@ -366,15 +527,15 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
     );
   }
 
-  // Add new item to grocery list with duplicate checking
+  // Add new item to grocery list with duplicate checking and unit conversion
   Future<void> _addItem() async {
     final user = _auth.currentUser;
     if (user == null || _itemController.text.trim().isEmpty) return;
 
     final String name = _itemController.text.trim().toLowerCase();
     final String originalName = _itemController.text.trim();
-    final String quantity = _quantityController.text.trim().isEmpty ? '1' : _quantityController.text.trim();
-    final String unit = _unitController.text.trim();
+    final double newQuantity = _parseQuantity(_quantityController.text.trim().isEmpty ? '1' : _quantityController.text.trim());
+    final String newUnit = _selectedUnit;
     final String category = _selectedCategory;
 
     try {
@@ -388,37 +549,61 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
           .get();
 
       if (existingItemsQuery.docs.isNotEmpty) {
-        // Item exists - update quantity instead of creating new one
+        // Item exists - handle unit conversion and merging
         final existingDoc = existingItemsQuery.docs.first;
         final existingData = existingDoc.data() as Map<String, dynamic>;
-        final double existingAmount = _parseQuantity(existingData['amount'] ?? '1');
-        final String existingUnit = (existingData['unit'] ?? '').toString().toLowerCase().trim();
+        final double existingQuantity = _parseQuantity(existingData['amount'] ?? '1');
+        final String existingUnit = (existingData['unit'] ?? '').toString();
         final String existingCategory = existingData['category'] ?? 'Other';
         
         // Check if units and categories are compatible for merging
-        if (_areUnitsCompatible(existingUnit, unit) && existingCategory == category) {
-          // Merge quantities - units and categories match
-          final double newAmount = _parseQuantity(quantity);
-          final double mergedAmount = existingAmount + newAmount;
-          final String displayUnit = existingUnit.isNotEmpty ? existingUnit : unit;
+        if (_areUnitsCompatible(existingUnit, newUnit) && existingCategory == category) {
+          // Convert both quantities to a common base unit and merge
+          final String baseUnit = _getBaseUnit(existingUnit);
+          final String unitCategory = _getUnitCategory(existingUnit);
+          
+          // Convert existing quantity to base unit
+          final double existingInBase = _convertQuantity(existingQuantity, existingUnit, baseUnit);
+          
+          // Convert new quantity to base unit
+          final double newInBase = _convertQuantity(newQuantity, newUnit, baseUnit);
+          
+          // Merge quantities in base unit
+          final double mergedInBase = existingInBase + newInBase;
+          
+          // Choose the best display unit for the merged quantity
+          final String bestDisplayUnit = _chooseBestDisplayUnit(mergedInBase, unitCategory);
+          
+          // Convert back to the best display unit
+          final double mergedQuantity = _convertQuantity(mergedInBase, baseUnit, bestDisplayUnit);
+          final String displayQuantity = _formatQuantity(mergedQuantity, bestDisplayUnit);
           
           await existingDoc.reference.update({
-            'amount': mergedAmount.toString(),
-            'unit': displayUnit,
+            'amount': displayQuantity,
+            'unit': bestDisplayUnit,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Updated quantity of $originalName to $mergedAmount $displayUnit'),
+                content: Text('Updated $originalName: $existingQuantity $existingUnit + $newQuantity $newUnit = $displayQuantity $bestDisplayUnit'),
                 backgroundColor: Colors.blue,
-                duration: const Duration(seconds: 2),
+                duration: const Duration(seconds: 3),
               ),
             );
           }
         } else {
           // Units or categories are incompatible - add as new item with note
+          String note = '';
+          if (existingUnit != newUnit && existingCategory != category) {
+            note = 'Different unit and category from existing item';
+          } else if (existingUnit != newUnit) {
+            note = 'Different unit from existing item';
+          } else {
+            note = 'Different category from existing item';
+          }
+          
           await _firestore
               .collection('users')
               .doc(user.uid)
@@ -426,19 +611,19 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
               .add({
             'name': name,
             'originalName': originalName,
-            'amount': quantity,
-            'unit': unit,
+            'amount': newQuantity.toString(),
+            'unit': newUnit,
             'category': category,
             'isChecked': false,
             'createdAt': FieldValue.serverTimestamp(),
             'userId': user.uid,
-            'note': 'Different ${existingUnit != unit ? 'unit' : 'category'} from existing item',
+            'note': note,
           });
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Added $originalName (different ${existingUnit != unit ? 'unit' : 'category'})'),
+                content: Text('Added $originalName ($note)'),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 2),
               ),
@@ -454,8 +639,8 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
             .add({
           'name': name,
           'originalName': originalName,
-          'amount': quantity,
-          'unit': unit,
+          'amount': newQuantity.toString(),
+          'unit': newUnit,
           'category': category,
           'isChecked': false,
           'createdAt': FieldValue.serverTimestamp(),
@@ -476,7 +661,10 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
       // Clear form
       _itemController.clear();
       _quantityController.clear();
-      _unitController.clear();
+      // Reset unit to default
+      setState(() {
+        _selectedUnit = 'units';
+      });
       
     } catch (e) {
       if (mounted) {
@@ -587,102 +775,102 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
 
   // Build grocery item card
   Widget _buildGroceryItem(DocumentSnapshot doc) {
-  final isDarkMode = ThemeProvider().darkModeEnabled;
-  final data = doc.data() as Map<String, dynamic>;
-  final String name = data['originalName'] ?? data['name'] ?? 'Unknown';
-  final String amount = data['amount']?.toString() ?? '1';
-  final String unit = data['unit']?.toString() ?? '';
-  final String category = data['category'] ?? 'Other';
-  final bool isChecked = data['isChecked'] ?? false;
-  final String recipeSource = data['recipeSource'] ?? '';
-  final String note = data['note'] ?? '';
+    final isDarkMode = ThemeProvider().darkModeEnabled;
+    final data = doc.data() as Map<String, dynamic>;
+    final String name = data['originalName'] ?? data['name'] ?? 'Unknown';
+    final String amount = data['amount']?.toString() ?? '1';
+    final String unit = data['unit']?.toString() ?? '';
+    final String category = data['category'] ?? 'Other';
+    final bool isChecked = data['isChecked'] ?? false;
+    final String recipeSource = data['recipeSource'] ?? '';
+    final String note = data['note'] ?? '';
 
-  final cardColor = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
-  final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
-  final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
+    final cardColor = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
+    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+    final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
 
-  return Card(
-    color: cardColor,
-    elevation: 2,
-    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-    child: ListTile(
-      leading: Checkbox(
-        value: isChecked,
-        onChanged: (value) => _toggleItemChecked(doc.id, isChecked),
-        activeColor: const Color(0xFF5C8A94),
-      ),
-      title: Text(
-        name.capitalize(),
-        style: TextStyle(
-          fontSize: 16,
-          color: textColor,
-          decoration: isChecked ? TextDecoration.lineThrough : TextDecoration.none,
+    return Card(
+      color: cardColor,
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+      child: ListTile(
+        leading: Checkbox(
+          value: isChecked,
+          onChanged: (value) => _toggleItemChecked(doc.id, isChecked),
+          activeColor: const Color(0xFF5C8A94),
+        ),
+        title: Text(
+          name.capitalize(),
+          style: TextStyle(
+            fontSize: 16,
+            color: textColor,
+            decoration: isChecked ? TextDecoration.lineThrough : TextDecoration.none,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (amount != '1' || unit.isNotEmpty)
+              Text(
+                '$amount ${unit.isNotEmpty ? unit : ''}'.trim(),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: subtitleColor,
+                  decoration: isChecked ? TextDecoration.lineThrough : TextDecoration.none,
+                ),
+              ),
+            if (recipeSource.isNotEmpty)
+              Text(
+                'From: $recipeSource',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: const Color(0xFF5C8A94),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            if (note.isNotEmpty)
+              Text(
+                note,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.orange[700],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: _getCategoryColor(category).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: _getCategoryColor(category).withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                _translateCategoryName(category),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: _getCategoryColor(category),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        trailing: Builder(
+          builder: (context) => IconButton(
+            icon: Icon(
+              Icons.more_vert,
+              color: isDarkMode ? const Color(0xFFE1E1E1) : Colors.grey[600],
+            ),
+            onPressed: () => _showItemMenu(doc, name),
+          ),
         ),
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (amount != '1' || unit.isNotEmpty)
-            Text(
-              '$amount ${unit.isNotEmpty ? unit : ''}'.trim(),
-              style: TextStyle(
-                fontSize: 14,
-                color: subtitleColor,
-                decoration: isChecked ? TextDecoration.lineThrough : TextDecoration.none,
-              ),
-            ),
-          if (recipeSource.isNotEmpty)
-            Text(
-              'From: $recipeSource',
-              style: TextStyle(
-                fontSize: 12,
-                color: const Color(0xFF5C8A94),
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          if (note.isNotEmpty)
-            Text(
-              note,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.orange[700],
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          Container(
-            margin: const EdgeInsets.only(top: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: _getCategoryColor(category).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: _getCategoryColor(category).withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Text(
-              _translateCategoryName(category),
-              style: TextStyle(
-                fontSize: 10,
-                color: _getCategoryColor(category),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-      trailing: Builder(
-        builder: (context) => IconButton(
-          icon: Icon(
-            Icons.more_vert,
-            color: isDarkMode ? const Color(0xFFE1E1E1) : Colors.grey[600],
-          ),
-          onPressed: () => _showItemMenu(doc, name),
-        ),
-      ),
-    ),
-  );
-}
+    );
+  }
 
   // Get color for category
   Color _getCategoryColor(String category) {
@@ -884,7 +1072,7 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
                     ),
                     const SizedBox(width: 12),
                     
-                    // Unit Field
+                    // Unit Dropdown Field
                     Expanded(
                       flex: 3,
                       child: Container(
@@ -892,22 +1080,37 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: borderColor),
                         ),
-                        child: TextField(
-                          controller: _unitController,
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedUnit,
                           decoration: InputDecoration(
                             labelText: 'Unit',
                             labelStyle: TextStyle(color: textColor.withOpacity(0.7)),
-                            hintText: 'pieces, kg, cups...',
-                            hintStyle: TextStyle(color: hintColor),
                             border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             prefixIcon: Icon(
                               Icons.straighten_outlined,
                               color: accentColor,
                               size: 18,
                             ),
                           ),
+                          dropdownColor: backgroundColor,
                           style: TextStyle(color: textColor, fontSize: 16),
+                          items: _unitOptions.map((String unit) {
+                            return DropdownMenuItem<String>(
+                              value: unit,
+                              child: Text(
+                                unit,
+                                style: TextStyle(color: textColor),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                _selectedUnit = newValue;
+                              });
+                            }
+                          },
                         ),
                       ),
                     ),
@@ -1010,7 +1213,7 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
       backgroundColor: backgroundColor,
       bottomNavigationBar: CustomBottomNavBar(
         onTabContentTapped: (index) {},
-        currentIndex: 2, // Adjust index based on your nav bar
+        currentIndex: 0, // Adjust index based on your nav bar
         navContext: context,
       ),
       appBar: AppBar(

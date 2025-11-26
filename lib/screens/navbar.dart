@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../providers/theme_provider.dart';
-// Import the screens that the navbar navigates to directly
 import 'expiring.dart'; 
 import 'add_item_screen.dart'; 
-import 'dishes.dart';
+// import 'dishes.dart';
 import 'home.dart';
 import 'settings.dart';
+import 'inventory_screen.dart';
+import '../utils/translation_helper.dart';
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -67,7 +68,7 @@ class CustomBottomNavBar extends StatelessWidget {
       Navigator.push(
         navContext,
         MaterialPageRoute(
-          builder: (context) => const RecipeApp(),
+          builder: (context) => const InventoryApp(),
         ),
       );
     }
@@ -88,31 +89,32 @@ class CustomBottomNavBar extends StatelessWidget {
       selectedItemColor: AppColors.expiringRed,
       unselectedItemColor: isDarkMode ? const Color(0xFF808080) : Colors.grey,
       backgroundColor: backgroundColor,
-      items: const <BottomNavigationBarItem>[
+      items: <BottomNavigationBarItem>[
         BottomNavigationBarItem(
           icon: Icon(Icons.home_outlined),
-          label: 'Home',
+          label: TranslationHelper.t('Home', 'ہوم'),
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.search),
-          label: 'Search',
+          icon: Icon(Icons.kitchen_outlined),
+          label: TranslationHelper.t('Inventory', 'انوینٹری'),
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.add_circle_outline, size: 30),
-          label: 'Add',
+          label: TranslationHelper.t('Add', 'شامل کریں'),
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.delete_outline),
-          label: 'Expire',
+          label: TranslationHelper.t('Expire', 'ختم ہونے والے'),
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          label: 'Profile',
+          icon: Icon(Icons.person_outlined),
+          label: TranslationHelper.t('Settings', 'ترتیبات'),
         ),
       ],
       // Pass the current index and the internal handler
       currentIndex: currentIndex,
       onTap: _handleNavigation, 
     );
+
   }
 }

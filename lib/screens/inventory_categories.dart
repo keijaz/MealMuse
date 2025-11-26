@@ -1395,14 +1395,26 @@ class _CategorySearchScreenState extends State<CategorySearchScreen> {
     });
 
     try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(_currentUser?.uid)
-          .collection('inventory')
-          .where('category', isEqualTo: widget.category)
-          .get();
+      QuerySnapshot snapshot;
+      
+      // If category is "All", search entire inventory without category filter
+      if (widget.category.toLowerCase() == 'all') {
+        snapshot = await _firestore
+            .collection('users')
+            .doc(_currentUser?.uid)
+            .collection('inventory')
+            .get();
+      } else {
+        // Otherwise, filter by specific category
+        snapshot = await _firestore
+            .collection('users')
+            .doc(_currentUser?.uid)
+            .collection('inventory')
+            .where('category', isEqualTo: widget.category)
+            .get();
+      }
 
-      // Perform client-side fuzzy filtering within the category
+      // Perform client-side fuzzy filtering
       final filteredResults = snapshot.docs.where((doc) {
         final String name = doc['name'].toString().toLowerCase();
         final String searchQuery = query.toLowerCase();
@@ -1448,6 +1460,24 @@ class _CategorySearchScreenState extends State<CategorySearchScreen> {
       elevation: 2,
       color: cardBg,
       child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: item.backgroundColor.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(
+              item.category[0].toUpperCase(),
+              style: TextStyle(
+                color: item.backgroundColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ),
         title: Text(
           data['name'] ?? 'Unknown Item',
           style: TextStyle(fontSize: 16, color: textColor),
@@ -1455,9 +1485,31 @@ class _CategorySearchScreenState extends State<CategorySearchScreen> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${data['quantity'] ?? ''} ${data['unit'] ?? ''}',
-              style: TextStyle(color: subtitleColor),
+            Row(
+              children: [
+                Text(
+                  '${data['quantity'] ?? ''} ${data['unit'] ?? ''}',
+                  style: TextStyle(color: subtitleColor),
+                ),
+                const SizedBox(width: 8),
+                // Show category badge for "All" search
+                if (widget.category.toLowerCase() == 'all')
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: item.backgroundColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      item.category,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: item.backgroundColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             Text(
               'Expires: ${item.expiryDisplay}',
@@ -1493,6 +1545,14 @@ class _CategorySearchScreenState extends State<CategorySearchScreen> {
     final backgroundColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
     final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
     
+    // Determine search hint text based on category
+    String searchHint;
+    if (widget.category.toLowerCase() == 'all') {
+      searchHint = TranslationHelper.t('Search all items...', 'تمام آئٹمز میں تلاش کریں...');
+    } else {
+      searchHint = TranslationHelper.t('Search in ${widget.category}...', 'میں تلاش کریں ${_translateCategory(widget.category)}...');
+    }
+    
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -1507,7 +1567,7 @@ class _CategorySearchScreenState extends State<CategorySearchScreen> {
           autofocus: true,
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
-            hintText: TranslationHelper.t('Search in ${widget.category}...', 'میں تلاش کریں ${_translateCategory(widget.category)}...'),
+            hintText: searchHint,
             border: InputBorder.none,
             hintStyle: TextStyle(color: isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600]),
           ),
@@ -1533,7 +1593,9 @@ class _CategorySearchScreenState extends State<CategorySearchScreen> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                TranslationHelper.t('Search for items in ${widget.category}', 'میں آئٹمز کے لیے تلاش کریں ${_translateCategory(widget.category)}'),
+                widget.category.toLowerCase() == 'all'
+                    ? TranslationHelper.t('Search through all your inventory items', 'اپنی تمام انوینٹری آئٹمز میں تلاش کریں')
+                    : TranslationHelper.t('Search for items in ${widget.category}', 'میں آئٹمز کے لیے تلاش کریں ${_translateCategory(widget.category)}'),
                 style: TextStyle(color: isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey, fontSize: 16),
                 textAlign: TextAlign.center,
               ),
@@ -1541,8 +1603,9 @@ class _CategorySearchScreenState extends State<CategorySearchScreen> {
           
           // Loading indicator
           if (_isSearching)
-            CircularProgressIndicator(
-              color: isDarkMode ? const Color(0xFF5C8A94) : null,
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
             ),
           
           // Search results
@@ -1550,7 +1613,9 @@ class _CategorySearchScreenState extends State<CategorySearchScreen> {
             child: _searchResults.isEmpty && _searchController.text.isNotEmpty && !_isSearching
                 ? Center(
                     child: Text(
-                      TranslationHelper.t('No items found in this category', 'اس کیٹیگری میں کوئی آئٹمز نہیں ملے'),
+                      widget.category.toLowerCase() == 'all'
+                          ? TranslationHelper.t('No items found in your inventory', 'آپ کی انوینٹری میں کوئی آئٹمز نہیں ملے')
+                          : TranslationHelper.t('No items found in this category', 'اس کیٹیگری میں کوئی آئٹمز نہیں ملے'),
                       style: TextStyle(color: isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey, fontSize: 16),
                     ),
                   )

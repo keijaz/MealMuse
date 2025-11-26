@@ -50,6 +50,191 @@ class _AddItemScreenState extends State<AddItemScreen> {
     'Other'
   ];
   
+  // Unit conversion factors (to base unit)
+  final Map<String, double> _unitConversionFactors = {
+    // Weight units (base: grams)
+    'grams': 1.0,
+    'g': 1.0,
+    'gram': 1.0,
+    'kgs': 1000.0,
+    'kg': 1000.0,
+    'kilogram': 1000.0,
+    'kilograms': 1000.0,
+    'lbs': 453.592,
+    'lb': 453.592,
+    'pound': 453.592,
+    'pounds': 453.592,
+    'oz': 28.3495,
+    'ounce': 28.3495,
+    'ounces': 28.3495,
+    
+    // Volume units (base: milliliters)
+    'ml': 1.0,
+    'milliliter': 1.0,
+    'milliliters': 1.0,
+    'liters': 1000.0,
+    'liter': 1000.0,
+    'l': 1000.0,
+    'tablespoon': 14.7868,
+    'tbsp': 14.7868,
+    'tablespoons': 14.7868,
+    'teaspoon': 4.92892,
+    'tsp': 4.92892,
+    'teaspoons': 4.92892,
+    'cups': 236.588,
+    'cup': 236.588,
+    'fl oz': 29.5735,
+    'fluid ounce': 29.5735,
+    'fluid ounces': 29.5735,
+    
+    // Count units (base: units)
+    'units': 1.0,
+    'unit': 1.0,
+    'items': 1.0,
+    'item': 1.0,
+    'pieces': 1.0,
+    'piece': 1.0,
+    'pcs': 1.0,
+    'pc': 1.0,
+    '': 1.0,
+  };
+
+  final List<String> _unitOptions = [
+    'units',
+    'grams',
+    'KGs',
+    'liters',
+    'lbs',
+    'tablespoon',
+    'teaspoon',
+    'cups'
+  ];
+
+  // Helper methods for unit conversion
+  bool _isWeightUnit(String unit) {
+    const weightUnits = {
+      'g', 'gram', 'grams', 'kg', 'kgs', 'kilogram', 'kilograms', 
+      'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds'
+    };
+    return weightUnits.contains(unit.toLowerCase().trim());
+  }
+
+  bool _isVolumeUnit(String unit) {
+    const volumeUnits = {
+      'ml', 'milliliter', 'milliliters', 'l', 'liter', 'liters', 
+      'cup', 'cups', 'tsp', 'teaspoon', 'teaspoons', 
+      'tbsp', 'tablespoon', 'tablespoons', 
+      'fl oz', 'fluid ounce', 'fluid ounces'
+    };
+    return volumeUnits.contains(unit.toLowerCase().trim());
+  }
+
+  bool _isCountUnit(String unit) {
+    const countUnits = {
+      '', 'item', 'items', 'piece', 'pieces', 'unit', 'units', 
+      'pcs', 'pc'
+    };
+    return countUnits.contains(unit.toLowerCase().trim());
+  }
+
+  // Helper method to check if units are compatible for merging
+  bool _areUnitsCompatible(String unit1, String unit2) {
+    // Normalize units
+    final normalized1 = unit1.toLowerCase().trim();
+    final normalized2 = unit2.toLowerCase().trim();
+    
+    // If both units are empty or same, they're compatible
+    if (normalized1 == normalized2) return true;
+    
+    // If one unit is empty, consider them compatible (assume same unit)
+    if (normalized1.isEmpty || normalized2.isEmpty) return true;
+    
+    // Check if both units belong to the same category
+    return (_isWeightUnit(normalized1) && _isWeightUnit(normalized2)) ||
+           (_isVolumeUnit(normalized1) && _isVolumeUnit(normalized2)) ||
+           (_isCountUnit(normalized1) && _isCountUnit(normalized2));
+  }
+
+  // Get unit category
+  String _getUnitCategory(String unit) {
+    final normalizedUnit = unit.toLowerCase().trim();
+    if (_isWeightUnit(normalizedUnit)) return 'weight';
+    if (_isVolumeUnit(normalizedUnit)) return 'volume';
+    if (_isCountUnit(normalizedUnit)) return 'count';
+    return 'count';
+  }
+
+  // Base units for each category
+  String _getBaseUnit(String unit) {
+    final normalizedUnit = unit.toLowerCase().trim();
+    
+    if (_isWeightUnit(normalizedUnit)) return 'grams';
+    if (_isVolumeUnit(normalizedUnit)) return 'ml';
+    if (_isCountUnit(normalizedUnit)) return 'units';
+    
+    return 'units'; // default
+  }
+
+  // Convert quantity from one unit to another
+  double _convertQuantity(double quantity, String fromUnit, String toUnit) {
+    if (fromUnit.toLowerCase().trim() == toUnit.toLowerCase().trim()) {
+      return quantity;
+    }
+    
+    final fromFactor = _unitConversionFactors[fromUnit.toLowerCase().trim()] ?? 1.0;
+    final toFactor = _unitConversionFactors[toUnit.toLowerCase().trim()] ?? 1.0;
+    
+    if (fromFactor == 0 || toFactor == 0) return quantity;
+    
+    // Convert to base unit first, then to target unit
+    final baseQuantity = quantity * fromFactor;
+    return baseQuantity / toFactor;
+  }
+
+  // Format quantity for display (round to reasonable precision)
+  String _formatQuantity(double quantity, String unit) {
+    if (quantity == quantity.truncateToDouble()) {
+      return quantity.toInt().toString();
+    }
+    
+    // For very small quantities, show more decimal places
+    if (quantity < 1) {
+      return quantity.toStringAsFixed(3).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+    }
+    
+    // For larger quantities, show fewer decimal places
+    if (quantity < 10) {
+      return quantity.toStringAsFixed(2).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+    }
+    
+    return quantity.toStringAsFixed(1).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+  }
+
+  // Choose the best display unit based on quantity
+  String _chooseBestDisplayUnit(double baseQuantity, String unitCategory) {
+    if (unitCategory == 'weight') {
+      if (baseQuantity >= 1000) return 'KGs';
+      if (baseQuantity >= 1) return 'grams';
+      return 'grams';
+    } else if (unitCategory == 'volume') {
+      if (baseQuantity >= 1000) return 'liters';
+      if (baseQuantity >= 1) return 'ml';
+      return 'ml';
+    }
+    
+    return 'units';
+  }
+
+  // Helper method to parse quantity from string to double
+  double _parseQuantity(dynamic quantity) {
+    if (quantity == null) return 1.0;
+    if (quantity is num) return quantity.toDouble();
+    if (quantity is String) {
+      return double.tryParse(quantity) ?? 1.0;
+    }
+    return 1.0;
+  }
+
   // Helper to translate category names
   String _translateCategory(String category) {
     final isUrdu = LocaleProvider().localeNotifier.value?.languageCode == 'ur';
@@ -68,14 +253,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     return categoryMapUrdu[category] ?? category;
   }
 
-  final List<String> _unitOptions = [
-    'units',
-    'grams',
-    'KGs',
-    'liters'
-  ];
-
-  // Save item to Firebase
+  // Save item to Firebase with duplicate checking and unit conversion
   Future<void> _saveItemToInventory() async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -100,54 +278,137 @@ class _AddItemScreenState extends State<AddItemScreen> {
         },
       );
 
-      // Prepare item data
-      final itemData = {
-        'name': _nameController.text.trim(),
-        'category': _selectedCategory,
-        'quantity': _quantityController.text.trim().isNotEmpty 
-            ? _quantityController.text.trim() 
-            : null,
-        'unit': _selectedUnit,
-        'purchaseDate': _purchaseDateController.text.trim().isNotEmpty
-            ? _purchaseDateController.text.trim()
-            : null,
-        'expiryDate': _expiryDateController.text.trim().isNotEmpty
-            ? _expiryDateController.text.trim()
-            : null,
-        'notes': _notesController.text.trim().isNotEmpty
-            ? _notesController.text.trim()
-            : null,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'userId': user.uid, // Store user ID for security rules
-      };
+      final String itemName = _nameController.text.trim().toLowerCase();
+      final String originalName = _nameController.text.trim();
+      final double newQuantity = _parseQuantity(_quantityController.text.trim());
+      final String newUnit = _selectedUnit;
+      final String? category = _selectedCategory;
+      final String purchaseDate = _purchaseDateController.text.trim();
+      final String expiryDate = _expiryDateController.text.trim();
+      final String notes = _notesController.text.trim();
 
-      // Remove null values from the map
-      itemData.removeWhere((key, value) => value == null);
-
-      // Save to Firebase
-      await _firestore
+      // Check if item already exists in inventory
+      final existingItemsQuery = await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('inventory')
-          .add(itemData);
+          .where('name', isEqualTo: itemName)
+          .get();
 
-      // TODO: TESTING ONLY - Check notifications for newly added item
-      // This can be removed later if not needed in production
-      final notificationService = NotificationService();
-      final prefs = await SharedPreferences.getInstance();
-      final notificationsEnabled = prefs.getBool('notifications_enabled') ?? false;
-      
-      if (notificationsEnabled) {
-        // Note: forceCheck parameter not needed since daily limit is commented out
-        await notificationService.checkExpiringItems();
+      if (existingItemsQuery.docs.isNotEmpty) {
+        // Item exists - handle unit conversion and merging
+        final existingDoc = existingItemsQuery.docs.first;
+        final existingData = existingDoc.data() as Map<String, dynamic>;
+        final double existingQuantity = _parseQuantity(existingData['quantity'] ?? '1');
+        final String existingUnit = (existingData['unit'] ?? '').toString();
+        final String existingCategory = existingData['category'] ?? 'Other';
+        
+        // Check if units are compatible for merging
+        if (_areUnitsCompatible(existingUnit, newUnit)) {
+          // Convert both quantities to a common base unit and merge
+          final String baseUnit = _getBaseUnit(existingUnit);
+          final String unitCategory = _getUnitCategory(existingUnit);
+          
+          // Convert existing quantity to base unit
+          final double existingInBase = _convertQuantity(existingQuantity, existingUnit, baseUnit);
+          
+          // Convert new quantity to base unit
+          final double newInBase = _convertQuantity(newQuantity, newUnit, baseUnit);
+          
+          // Merge quantities in base unit
+          final double mergedInBase = existingInBase + newInBase;
+          
+          // Choose the best display unit for the merged quantity
+          final String bestDisplayUnit = _chooseBestDisplayUnit(mergedInBase, unitCategory);
+          
+          // Convert back to the best display unit
+          final double mergedQuantity = _convertQuantity(mergedInBase, baseUnit, bestDisplayUnit);
+          final String displayQuantity = _formatQuantity(mergedQuantity, bestDisplayUnit);
+          
+          // Combine notes if both have notes
+          String combinedNotes = existingData['notes'] ?? '';
+          if (notes.isNotEmpty) {
+            combinedNotes = combinedNotes.isEmpty 
+                ? notes 
+                : '$combinedNotes\n$notes';
+          }
+
+          // Update existing item with merged quantity
+          final updateData = {
+            'quantity': displayQuantity,
+            'unit': bestDisplayUnit,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'notes': combinedNotes.isNotEmpty ? combinedNotes : null,
+          };
+
+          // Only update category if it's not set in existing item
+          if (existingCategory == 'Other' && category != null) {
+            updateData['category'] = category;
+          }
+
+          // Update purchase date if not set in existing item
+          if ((existingData['purchaseDate'] == null || existingData['purchaseDate'].toString().isEmpty) && purchaseDate.isNotEmpty) {
+            updateData['purchaseDate'] = purchaseDate;
+          }
+
+          // Update expiry date if not set in existing item or use the later date
+          if (expiryDate.isNotEmpty) {
+            final existingExpiry = existingData['expiryDate']?.toString();
+            if (existingExpiry == null || existingExpiry.isEmpty) {
+              updateData['expiryDate'] = expiryDate;
+            } else {
+              // Use the later expiry date
+              try {
+                final existingExpiryDate = DateTime.parse(existingExpiry);
+                final newExpiryDate = DateTime.parse(expiryDate);
+                if (newExpiryDate.isAfter(existingExpiryDate)) {
+                  updateData['expiryDate'] = expiryDate;
+                }
+              } catch (e) {
+                // If date parsing fails, keep existing expiry date
+              }
+            }
+          }
+
+          // Remove null values
+          updateData.removeWhere((key, value) => value == null);
+
+          await existingDoc.reference.update(updateData);
+
+          // Dismiss loading indicator
+          Navigator.of(context).pop();
+
+          // Show success message with conversion details
+          _showSuccessDialog(
+            message: '${TranslationHelper.t('Updated', 'اپ ڈیٹ کیا گیا')} $originalName: $existingQuantity $existingUnit + $newQuantity $newUnit = $displayQuantity $bestDisplayUnit'
+          );
+          
+        } else {
+          // Units are incompatible - add as new item
+          await _addNewItemToInventory(
+            name: itemName,
+            originalName: originalName,
+            quantity: newQuantity.toString(),
+            unit: newUnit,
+            category: category ?? 'Other',
+            purchaseDate: purchaseDate,
+            expiryDate: expiryDate,
+            notes: '$notes ${TranslationHelper.t('(Different unit from existing item)', '(موجودہ چیز سے مختلف یونٹ)')}'.trim(),
+          );
+        }
+      } else {
+        // Item doesn't exist - add new item
+        await _addNewItemToInventory(
+          name: itemName,
+          originalName: originalName,
+          quantity: newQuantity.toString(),
+          unit: newUnit,
+          category: category ?? 'Other',
+          purchaseDate: purchaseDate,
+          expiryDate: expiryDate,
+          notes: notes,
+        );
       }
-
-      // Dismiss loading indicator
-      Navigator.of(context).pop();
-
-      // Show success message and go back
-      _showSuccessDialog();
       
     } catch (e) {
       // Dismiss loading indicator
@@ -157,6 +418,62 @@ class _AddItemScreenState extends State<AddItemScreen> {
       
       _showErrorDialog(TranslationHelper.t('Error', 'خرابی'), '${TranslationHelper.t('Failed to save item', 'چیز کو محفوظ کرنے میں ناکامی')}: $e');
     }
+  }
+
+  // Helper method to add new item to inventory
+  Future<void> _addNewItemToInventory({
+    required String name,
+    required String originalName,
+    required String quantity,
+    required String unit,
+    required String? category,
+    required String purchaseDate,
+    required String expiryDate,
+    required String notes,
+  }) async {
+    final user = _auth.currentUser!;
+
+    // Prepare item data
+    final itemData = {
+      'name': name,
+      'originalName': originalName,
+      'quantity': quantity,
+      'unit': unit,
+      'category': category,
+      'purchaseDate': purchaseDate.isNotEmpty ? purchaseDate : null,
+      'expiryDate': expiryDate.isNotEmpty ? expiryDate : null,
+      'notes': notes.isNotEmpty ? notes : null,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'userId': user.uid,
+    };
+
+    // Remove null values from the map
+    itemData.removeWhere((key, value) => value == null);
+
+    // Save to Firebase
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('inventory')
+        .add(itemData);
+
+    // TODO: TESTING ONLY - Check notifications for newly added item
+    final notificationService = NotificationService();
+    final prefs = await SharedPreferences.getInstance();
+    final notificationsEnabled = prefs.getBool('notifications_enabled') ?? false;
+    
+    if (notificationsEnabled) {
+      await notificationService.checkExpiringItems();
+    }
+
+    // Dismiss loading indicator
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    // Show success message
+    _showSuccessDialog();
   }
 
   void _showErrorDialog(String title, String content) {
@@ -184,7 +501,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  void _showSuccessDialog() {
+  // Updated success dialog to accept custom message
+  void _showSuccessDialog({String? message}) {
     final isDarkMode = ThemeProvider().darkModeEnabled;
     final dialogBg = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
     final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
@@ -195,7 +513,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
         return AlertDialog(
           backgroundColor: dialogBg,
           title: Text(TranslationHelper.t('Success', 'کامیابی'), style: TextStyle(color: textColor)),
-          content: Text(TranslationHelper.t('Item added to inventory successfully!', 'چیز انوینٹری میں کامیابی سے شامل کی گئی!'), style: TextStyle(color: textColor)),
+          content: Text(
+            message ?? TranslationHelper.t('Item added to inventory successfully!', 'چیز انوینٹری میں کامیابی سے شامل کی گئی!'), 
+            style: TextStyle(color: textColor)
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -575,7 +896,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       backgroundColor: bgColor,
       bottomNavigationBar: CustomBottomNavBar(
         onTabContentTapped: (index) {},
-        currentIndex: 1,
+        currentIndex: 2,
         navContext: context,
       ),
       appBar: AppBar(

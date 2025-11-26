@@ -171,7 +171,7 @@ class _FilterScreenState extends State<FilterScreen> {
       backgroundColor: background,
       bottomNavigationBar: CustomBottomNavBar(
         onTabContentTapped: (index) {},
-        currentIndex: 1,
+        currentIndex: 0,
         navContext: context,
       ),
       appBar: PreferredSize(
@@ -817,7 +817,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
       backgroundColor: backgroundColor,
       bottomNavigationBar: CustomBottomNavBar(
         onTabContentTapped: (index) {},
-        currentIndex: 1,
+        currentIndex: 0,
         navContext: context,
       ),
       appBar: AppBar(

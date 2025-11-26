@@ -165,7 +165,8 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
 
   // Reusable widget for the item card in the list - SIMPLIFIED VERSION
   Widget _buildItemCard(ExpiringItem item) {
-    final isDarkMode = ThemeProvider().darkModeEnabled;
+    final themeProvider = ThemeProvider();
+    final isDarkMode = themeProvider.darkModeEnabled;
     final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : _primaryWhite;
     final textColor = isDarkMode ? const Color(0xFFE1E1E1) : _primaryBlack;
     final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
@@ -184,7 +185,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
           borderRadius: BorderRadius.circular(20.0),
           boxShadow: [
             BoxShadow(
-              color: _primaryBlack.withOpacity(0.05),
+              color: _primaryBlack.withOpacity(isDarkMode ? 0.1 : 0.05),
               spreadRadius: 2,
               blurRadius: 5,
               offset: const Offset(0, 3),
@@ -272,8 +273,13 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
   }
 
   Widget _buildContent() {
+    final themeProvider = ThemeProvider();
+    final isDarkMode = themeProvider.darkModeEnabled;
+    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : _primaryBlack;
+    final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey;
+
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(_primaryRed),
         ),
@@ -295,7 +301,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Text(
                 _errorMessage!,
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(fontSize: 16, color: subtitleColor),
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -330,7 +336,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
               const SizedBox(height: 16),
               Text(
                 TranslationHelper.t('No expiring items found', 'کوئی ختم ہونے والی اشیاء نہیں ملیں'),
-                style: const TextStyle(fontSize: 18, color: Colors.grey),
+                style: TextStyle(fontSize: 18, color: textColor),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -338,7 +344,7 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
               const SizedBox(height: 8),
               Text(
                 TranslationHelper.t('Add expiry dates to your inventory items to see them here', 'اپنی انوینٹری آئٹمز میں میعاد ختم ہونے کی تاریخیں شامل کریں تاکہ یہاں دکھائی دیں'),
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                style: TextStyle(fontSize: 14, color: subtitleColor),
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -365,7 +371,8 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
       _handleNavToMainShell(context, index);
     }
 
-    final isDarkMode = ThemeProvider().darkModeEnabled;
+    final themeProvider = ThemeProvider();
+    final isDarkMode = themeProvider.darkModeEnabled;
     final backgroundColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
 
     return Scaffold(

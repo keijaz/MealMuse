@@ -208,7 +208,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     final openInventoryLabel = TranslationHelper.t('Open Inventory', 'انوینٹری کھولیں');
     final savedRecipesLabel = TranslationHelper.t('Saved Recipes', 'محفوظ ریسیپیز');
     final settingsLabel = TranslationHelper.get('settings');
-    final shoppingLabel = TranslationHelper.get('Shopping List');
+    final shoppingLabel = TranslationHelper.t('Shopping List', 'خریداری');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),

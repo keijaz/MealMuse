@@ -186,7 +186,7 @@ class _InventoryCategoriesScreenState extends State<InventoryCategoriesScreen> {
       backgroundColor: backgroundColor,
       bottomNavigationBar: CustomBottomNavBar(
         onTabContentTapped: (index) {},
-        currentIndex: 0,
+        currentIndex: 1,
         navContext: context,
       ),
       body: SafeArea(
