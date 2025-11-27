@@ -387,9 +387,27 @@ class ProfileState extends State<ProfileCheck> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
+        backgroundColor: Colors.white, // Clean background
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5C8A94)),
+                strokeWidth: 4.0,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Loading...',
+                style: TextStyle(
+                  color: Color(0xFF5C8A94),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

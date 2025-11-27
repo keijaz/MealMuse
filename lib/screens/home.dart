@@ -12,6 +12,7 @@ import 'saved_recipes.dart';
 import 'add_item_screen.dart';
 import 'settings.dart';
 import 'grocery_list.dart';
+import 'chatbot.dart';
 
 // --- COLOR PALETTE (Required for local widgets) ---
 class AppColors {
@@ -174,18 +175,20 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     }
   }
 
+
+ // AI chatbot
   Widget _buildAddItemButton(BuildContext context) {
-    final addNewItemLabel = TranslationHelper.t('Add New Item', 'نیا آئٹم شامل کریں');
+    final addNewItemLabel = TranslationHelper.t('AI Support', 'بات چیت روبوٹ');
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
       child: ElevatedButton.icon(
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AddItemScreen()), // Navigates to dedicated screen
+            MaterialPageRoute(builder: (context) => const ChatbotScreen()), // Navigates to dedicated screen
           );
         },
-        icon: const Icon(Icons.add, color: Colors.white),
+        icon: const Icon(Icons.smart_toy, color: Colors.white),
         label: Text(
           addNewItemLabel,
           style: const TextStyle(fontSize: 18, color: Colors.white),

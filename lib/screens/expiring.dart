@@ -9,7 +9,7 @@ import 'navbar.dart';
 // --- Data Model for a single expiring item ---
 class ExpiringItem {
   final String name;
-  final int count;
+  final double count;
   final String unit;
   final String expiry;
   final IconData icon;
@@ -48,98 +48,219 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
     _loadExpiringItems();
   }
 
-  // Method to load expiring items from Firebase
-  Future<void> _loadExpiringItems() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        setState(() {
-          _errorMessage = TranslationHelper.t('User not logged in', 'صارف لاگ ان نہیں ہے');
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final inventorySnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('inventory')
-          .get();
-
-      final List<ExpiringItem> items = [];
-
-      for (final doc in inventorySnapshot.docs) {
-        final data = doc.data();
-        final expiryDateStr = data['expiryDate'] as String?;
-
-        // Skip items without expiry date
-        if (expiryDateStr == null || expiryDateStr.isEmpty) {
-          continue;
-        }
-
-        try {
-          // Parse expiry date
-          final expiryDate = DateTime.parse(expiryDateStr);
-          final now = DateTime.now();
-          final difference = expiryDate.difference(now);
-
-          // Calculate days until expiry
-          final daysUntilExpiry = difference.inDays;
-          String expiryText;
-
-          if (daysUntilExpiry < 0) {
-            expiryText = TranslationHelper.t('Expired', 'ختم شدہ');
-          } else if (daysUntilExpiry == 0) {
-            expiryText = TranslationHelper.t('Today', 'آج');
-          } else if (daysUntilExpiry == 1) {
-            expiryText = TranslationHelper.t('1 Day', '1 دن');
-          } else if (daysUntilExpiry < 7) {
-            expiryText = '$daysUntilExpiry ${TranslationHelper.t('Days', 'دن')}';
-          } else if (daysUntilExpiry < 30) {
-            final weeks = (daysUntilExpiry / 7).ceil();
-            expiryText = weeks == 1 ? TranslationHelper.t('1 Week', '1 ہفتہ') : '$weeks ${TranslationHelper.t('Weeks', 'ہفتے')}';
+  DateTime? _parseDate(String dateStr) {
+  // Clean the input
+  String cleaned = dateStr.trim();
+  
+  // Remove any time portion if present
+  if (cleaned.contains(' ')) {
+    cleaned = cleaned.split(' ')[0];
+  }
+  
+  // Replace common separators with dashes
+  cleaned = cleaned.replaceAll('/', '-').replaceAll('.', '-');
+  
+  try {
+    // Try direct parsing first
+    return DateTime.parse(cleaned);
+  } catch (e) {
+    // Try manual parsing for common formats
+    final parts = cleaned.split('-');
+    
+    if (parts.length == 3) {
+      try {
+        int? year, month, day;
+        
+        // Analyze the parts to determine format
+        for (int i = 0; i < parts.length; i++) {
+          final part = parts[i];
+          final num = int.tryParse(part);
+          
+          if (num == null) continue;
+          
+          if (part.length == 4) {
+            // This is likely the year
+            year = num;
+          } else if (num > 31) {
+            // Number > 31 is likely the year (for 2-digit years > 31)
+            year = num > 1000 ? num : 2000 + num;
+          } else if (month == null && num <= 12) {
+            // First number <= 12 is likely month
+            month = num;
           } else {
-            final months = (daysUntilExpiry / 30).ceil();
-            expiryText = months == 1 ? TranslationHelper.t('1 Month', '1 ماہ') : '$months ${TranslationHelper.t('Months', 'مہینے')}';
+            // Remaining number is day
+            day = num;
           }
-
-          // Get appropriate icon based on category
-          final category = data['category'] as String? ?? 'Other';
-          final icon = _getIconForCategory(category);
-
-          // Parse quantity and unit
-          final quantityStr = data['quantity'] as String? ?? '0';
-          final quantity = int.tryParse(quantityStr) ?? 0;
-          final unit = data['unit'] as String? ?? TranslationHelper.t('pcs', 'عدد');
-
-          items.add(ExpiringItem(
-            name: data['name'] as String? ?? TranslationHelper.t('Unknown Item', 'نامعلوم آئٹم'),
-            count: quantity,
-            unit: unit,
-            expiry: expiryText,
-            icon: icon,
-            expiryDate: expiryDate,
-          ));
-        } catch (e) {
-          // Skip items with invalid date format
-          continue;
         }
+        
+        // If we couldn't determine, try common formats
+        if (year == null || month == null || day == null) {
+          // Try DD-MM-YYYY
+          if (parts[0].length <= 2 && parts[1].length <= 2 && parts[2].length == 4) {
+            day = int.parse(parts[0]);
+            month = int.parse(parts[1]);
+            year = int.parse(parts[2]);
+          }
+          // Try MM-DD-YYYY  
+          else if (parts[0].length <= 2 && parts[1].length <= 2 && parts[2].length == 4) {
+            month = int.parse(parts[0]);
+            day = int.parse(parts[1]);
+            year = int.parse(parts[2]);
+          }
+          // Try YYYY-MM-DD
+          else if (parts[0].length == 4 && parts[1].length <= 2 && parts[2].length <= 2) {
+            year = int.parse(parts[0]);
+            month = int.parse(parts[1]);
+            day = int.parse(parts[2]);
+          }
+        }
+        
+        if (year != null && month != null && day != null) {
+          // Basic validation
+          if (year >= 2000 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            return DateTime(year, month, day);
+          }
+        }
+      } catch (e) {
+        return null;
       }
-
-      // Sort items by expiry date (earliest first)
-      items.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
-
-      setState(() {
-        _expiringItems = items;
-        _isLoading = false;
-      });
-    } catch (e) {
-        setState(() {
-        _errorMessage = "${TranslationHelper.t('Error loading expiring items', 'ختم ہونے والی اشیاء لوڈ کرنے میں خرابی')}: $e";
-        _isLoading = false;
-      });
     }
   }
+  
+  return null;
+}
+
+  // Method to load expiring items from Firebase
+ Future<void> _loadExpiringItems() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        _errorMessage = TranslationHelper.t('User not logged in', 'صارف لاگ ان نہیں ہے');
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final inventorySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('inventory')
+        .get();
+
+    final List<ExpiringItem> items = [];
+    int totalItems = 0;
+    int itemsWithExpiry = 0;
+    int itemsProcessed = 0;
+    int itemsSkipped = 0;
+
+    for (final doc in inventorySnapshot.docs) {
+      totalItems++;
+      final data = doc.data();
+      final expiryDateStr = data['expiryDate']?.toString(); // Use toString() to handle any type
+
+      // Skip items without expiry date
+      if (expiryDateStr == null || expiryDateStr.isEmpty || expiryDateStr == 'null') {
+        continue;
+      }
+      itemsWithExpiry++;
+
+      print('🔍 Processing: ${data['name']} - Expiry: "$expiryDateStr"');
+
+      try {
+        // Use the robust date parser
+        final expiryDate = _parseDate(expiryDateStr);
+        
+        if (expiryDate == null) {
+          print('❌ Could not parse date: $expiryDateStr');
+          itemsSkipped++;
+          continue;
+        }
+
+        final now = DateTime.now();
+        final difference = expiryDate.difference(now);
+
+        // Calculate days until expiry
+        final daysUntilExpiry = difference.inDays;
+        String expiryText;
+
+        if (daysUntilExpiry < 0) {
+          expiryText = TranslationHelper.t('Expired', 'ختم شدہ');
+        } else if (daysUntilExpiry == 0) {
+          expiryText = TranslationHelper.t('Today', 'آج');
+        } else if (daysUntilExpiry == 1) {
+          expiryText = TranslationHelper.t('1 Day', '1 دن');
+        } else if (daysUntilExpiry < 7) {
+          expiryText = '$daysUntilExpiry ${TranslationHelper.t('Days', 'دن')}';
+        } else if (daysUntilExpiry < 30) {
+          final weeks = (daysUntilExpiry / 7).ceil();
+          expiryText = weeks == 1 ? TranslationHelper.t('1 Week', '1 ہفتہ') : '$weeks ${TranslationHelper.t('Weeks', 'ہفتے')}';
+        } else {
+          final months = (daysUntilExpiry / 30).ceil();
+          expiryText = months == 1 ? TranslationHelper.t('1 Month', '1 ماہ') : '$months ${TranslationHelper.t('Months', 'مہینے')}';
+        }
+
+        // Get appropriate icon based on category
+        final category = data['category'] as String? ?? 'Other';
+        final icon = _getIconForCategory(category);
+
+        // Handle both string and numeric quantity
+        double quantity;
+        final quantityData = data['quantity'];
+        if (quantityData is String) {
+          quantity = double.tryParse(quantityData) ?? 0.0;
+        } else if (quantityData is int) {
+          quantity = quantityData.toDouble();
+        } else if (quantityData is double) {
+          quantity = quantityData;
+        } else {
+          quantity = 0.0;
+        }
+
+        final unit = data['unit'] as String? ?? TranslationHelper.t('pcs', 'عدد');
+
+        items.add(ExpiringItem(
+          name: data['name'] as String? ?? TranslationHelper.t('Unknown Item', 'نامعلوم آئٹم'),
+          count: quantity,
+          unit: unit,
+          expiry: expiryText,
+          icon: icon,
+          expiryDate: expiryDate,
+        ));
+        
+        itemsProcessed++;
+        print('✅ Successfully added: ${data['name']} - Expires: $expiryText');
+
+      } catch (e) {
+        itemsSkipped++;
+        print('❌ Error processing ${data['name']}: $e');
+        continue;
+      }
+    }
+
+    // Sort items by expiry date (earliest first)
+    items.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
+
+    // Debug summary
+    print('📊 Summary:');
+    print('   Total items: $totalItems');
+    print('   Items with expiry: $itemsWithExpiry');
+    print('   Successfully processed: $itemsProcessed');
+    print('   Skipped: $itemsSkipped');
+    print('   Final list: ${items.length} items');
+
+    setState(() {
+      _expiringItems = items;
+      _isLoading = false;
+    });
+  } catch (e) {
+    print('🔥 Fatal error in _loadExpiringItems: $e');
+    setState(() {
+      _errorMessage = "${TranslationHelper.t('Error loading expiring items', 'ختم ہونے والی اشیاء لوڈ کرنے میں خرابی')}: $e";
+      _isLoading = false;
+    });
+  }
+}
 
   // Helper method to get icon based on category
   IconData _getIconForCategory(String category) {
@@ -214,9 +335,8 @@ Widget _buildItemCard(ExpiringItem item) {
                 const SizedBox(height: 8),
                 
                 // Quantity and expiry - now in separate rows for better wrapping
-                // Quantity
                 Text(
-                  '${item.count} ${item.unit}',
+                  '${item.count == item.count.toInt() ? item.count.toInt() : item.count.toStringAsFixed(1)} ${item.unit}',
                   style: TextStyle(fontSize: 14, color: subtitleColor),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

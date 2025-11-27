@@ -1249,172 +1249,200 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final user = _auth.currentUser;
-    final isDarkMode = ThemeProvider().darkModeEnabled;
-    final backgroundColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
-    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
-    
-    final groceryListTitle = TranslationHelper.t('Grocery List', 'گروسری لسٹ');
-    final clearCheckedLabel = TranslationHelper.t('Clear Checked', 'چیک شدہ صاف کریں');
+Widget build(BuildContext context) {
+  final user = _auth.currentUser;
+  final isDarkMode = ThemeProvider().darkModeEnabled;
+  final backgroundColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
+  final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+  
+  final groceryListTitle = TranslationHelper.t('Grocery List', 'گروسری لسٹ');
+  final clearCheckedLabel = TranslationHelper.t('Clear Checked', 'چیک شدہ صاف کریں');
 
-    return Scaffold(
+  return Scaffold(
+    backgroundColor: backgroundColor,
+    bottomNavigationBar: CustomBottomNavBar(
+      onTabContentTapped: (index) {},
+      currentIndex: 0,
+      navContext: context,
+    ),
+    appBar: AppBar(
       backgroundColor: backgroundColor,
-      bottomNavigationBar: CustomBottomNavBar(
-        onTabContentTapped: (index) {},
-        currentIndex: 0,
-        navContext: context,
-      ),
-      appBar: AppBar(
-        backgroundColor: backgroundColor,
-        elevation: 0,
-        title: Text(
-          groceryListTitle,
-          style: TextStyle(
-            color: textColor,
-            fontSize: _adaptiveFontSize(context, 20),
-            fontWeight: FontWeight.bold,
-          ),
+      elevation: 0,
+      title: Text(
+        groceryListTitle,
+        style: TextStyle(
+          color: textColor,
+          fontSize: _adaptiveFontSize(context, 20),
+          fontWeight: FontWeight.bold,
         ),
-        actions: [
-          StreamBuilder<QuerySnapshot>(
-            stream: _firestore
-                .collection('users')
-                .doc(user?.uid)
-                .collection('grocery_list')
-                .where('isChecked', isEqualTo: true)
-                .snapshots(),
-            builder: (context, snapshot) {
-              final checkedCount = snapshot.data?.docs.length ?? 0;
-              if (checkedCount == 0) return const SizedBox.shrink();
-              
-              return IconButton(
-                icon: Badge(
-                  label: Text(
-                    checkedCount.toString(),
-                    style: TextStyle(
-                      fontSize: _adaptiveFontSize(context, 10),
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.check_circle_outline,
-                    size: _adaptiveIconSize(context, 24),
+      ),
+      actions: [
+        StreamBuilder<QuerySnapshot>(
+          stream: _firestore
+              .collection('users')
+              .doc(user?.uid)
+              .collection('grocery_list')
+              .where('isChecked', isEqualTo: true)
+              .snapshots(),
+          builder: (context, snapshot) {
+            final checkedCount = snapshot.data?.docs.length ?? 0;
+            if (checkedCount == 0) return const SizedBox.shrink();
+            
+            return IconButton(
+              icon: Badge(
+                label: Text(
+                  checkedCount.toString(),
+                  style: TextStyle(
+                    fontSize: _adaptiveFontSize(context, 10),
                   ),
                 ),
-                onPressed: _clearCheckedItems,
-                tooltip: clearCheckedLabel,
-                padding: _adaptivePadding(context),
-                iconSize: _adaptiveIconSize(context, 24),
-              );
-            },
-          ),
-        ],
-      ),
-      body: user == null
-          ? Center(
-              child: Padding(
-                padding: _adaptivePadding(context),
-                child: Text(
-                  'Please log in to view your grocery list',
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: _adaptiveFontSize(context, 16),
-                  ),
-                  textAlign: TextAlign.center,
+                child: Icon(
+                  Icons.check_circle_outline,
+                  size: _adaptiveIconSize(context, 24),
                 ),
               ),
-            )
-          : Column(
-              children: [
-                // Add Item Form
-                _buildAddItemForm(),
-                
-                // Grocery List
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _firestore
-                        .collection('users')
-                        .doc(user.uid)
-                        .collection('grocery_list')
-                        .orderBy('createdAt', descending: true)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Padding(
-                            padding: _adaptivePadding(context),
+              onPressed: _clearCheckedItems,
+              tooltip: clearCheckedLabel,
+              padding: _adaptivePadding(context),
+              iconSize: _adaptiveIconSize(context, 24),
+            );
+          },
+        ),
+      ],
+    ),
+    body: user == null
+        ? Center(
+            child: Padding(
+              padding: _adaptivePadding(context),
+              child: Text(
+                'Please log in to view your grocery list',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: _adaptiveFontSize(context, 16),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+        : LayoutBuilder( // Use LayoutBuilder to get constraints
+            builder: (context, constraints) {
+              final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+              
+              return Column(
+                children: [
+                  // Add Item Form - Make it shrink when keyboard is open
+                  if (!isKeyboardOpen) _buildAddItemForm(),
+                  
+                  // Grocery List - Always visible, takes remaining space
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: _firestore
+                          .collection('users')
+                          .doc(user.uid)
+                          .collection('grocery_list')
+                          .orderBy('createdAt', descending: true)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Padding(
+                              padding: _adaptivePadding(context),
+                              child: Text(
+                                'Error: ${snapshot.error}',
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: _adaptiveFontSize(context, 14),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        }
+
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(
+                            child: CircularProgressIndicator(color: const Color(0xFF5C8A94)),
+                          );
+                        }
+
+                        final items = snapshot.data?.docs ?? [];
+
+                        if (items.isEmpty) {
+                          return Center(
+                            child: Padding(
+                              padding: _adaptivePadding(context),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.shopping_cart_outlined,
+                                    size: _adaptiveIconSize(context, 60),
+                                    color: isDarkMode ? const Color(0xFF404040) : Colors.grey[300],
+                                  ),
+                                  SizedBox(height: _isSmallScreen(context) ? 12 : 16),
+                                  Text(
+                                    'Your grocery list is empty',
+                                    style: TextStyle(
+                                      fontSize: _adaptiveFontSize(context, 16),
+                                      color: textColor,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: _isSmallScreen(context) ? 4 : 8),
+                                  Text(
+                                    isKeyboardOpen 
+                                        ? 'Close keyboard to add items'
+                                        : 'Add items using the form above',
+                                    style: TextStyle(
+                                      fontSize: _adaptiveFontSize(context, 12),
+                                      color: isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600],
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          itemCount: items.length,
+                          itemBuilder: (context, index) {
+                            return _buildGroceryItem(items[index]);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  
+                  // Show mini form when keyboard is open
+                  if (isKeyboardOpen) 
+                    Container(
+                      padding: const EdgeInsets.all(8.0),
+                      color: backgroundColor,
+                      child: Row(
+                        children: [
+                          Expanded(
                             child: Text(
-                              'Error: ${snapshot.error}',
+                              'Add items after closing keyboard',
                               style: TextStyle(
                                 color: textColor,
-                                fontSize: _adaptiveFontSize(context, 14),
+                                fontSize: _adaptiveFontSize(context, 12),
                               ),
                               textAlign: TextAlign.center,
                             ),
                           ),
-                        );
-                      }
-
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(
-                          child: CircularProgressIndicator(color: const Color(0xFF5C8A94)),
-                        );
-                      }
-
-                      final items = snapshot.data?.docs ?? [];
-
-                      if (items.isEmpty) {
-                        return Center(
-                          child: Padding(
-                            padding: _adaptivePadding(context),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.shopping_cart_outlined,
-                                  size: _adaptiveIconSize(context, 60),
-                                  color: isDarkMode ? const Color(0xFF404040) : Colors.grey[300],
-                                ),
-                                SizedBox(height: _isSmallScreen(context) ? 12 : 16),
-                                Text(
-                                  'Your grocery list is empty',
-                                  style: TextStyle(
-                                    fontSize: _adaptiveFontSize(context, 16),
-                                    color: textColor,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: _isSmallScreen(context) ? 4 : 8),
-                                Text(
-                                  'Add items using the form above',
-                                  style: TextStyle(
-                                    fontSize: _adaptiveFontSize(context, 12),
-                                    color: isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-
-                      return ListView.builder(
-                        padding: EdgeInsets.only(
-                          bottom: MediaQuery.of(context).padding.bottom + 8,
-                        ),
-                        itemCount: items.length,
-                        itemBuilder: (context, index) {
-                          return _buildGroceryItem(items[index]);
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
+                        ],
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+  );
+}
+  
 }
 
 extension StringExtension on String {
