@@ -4,6 +4,7 @@ import 'register.dart'; // Import the RegisterScreen
 import '../providers/theme_provider.dart';
 import '../providers/locale_provider.dart';
 import '../utils/translation_helper.dart';
+import 'admin_login.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -77,7 +78,7 @@ class HomePage extends StatelessWidget {
 
           // === BOTTOM SECTION (Buttons) ===
           Container(
-            height: screenHeight * 0.35, // Proportional height for the button area
+            height: screenHeight * 0.45, // Increased height to accommodate the new button
             width: double.infinity,
             decoration: const BoxDecoration(
               color: primaryTeal,
@@ -154,6 +155,47 @@ class HomePage extends StatelessWidget {
                       ),
                       child: Text(
                         TranslationHelper.t('Register', 'رجسٹر کریں'),
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.black : Colors.black,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+
+                  Text(
+                    TranslationHelper.t('Or', 'یا'),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+
+                  // --- Login as Admin Button ---
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Navigate to LoginScreen (same as regular login)
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AdminLoginScreen()),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                        elevation: 5,
+                      ),
+                      child: Text(
+                        TranslationHelper.t('Login as Admin', 'ایڈمن کے طور پر لاگ اِن کریں'),
                         style: TextStyle(
                           color: isDarkMode ? Colors.black : Colors.black,
                           fontSize: 20,
