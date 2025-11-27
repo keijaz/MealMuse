@@ -164,107 +164,104 @@ class _ExpiringItemsScreenState extends State<ExpiringItemsScreen> {
   }
 
   // Reusable widget for the item card in the list - SIMPLIFIED VERSION
-  Widget _buildItemCard(ExpiringItem item) {
-    final themeProvider = ThemeProvider();
-    final isDarkMode = themeProvider.darkModeEnabled;
-    final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : _primaryWhite;
-    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : _primaryBlack;
-    final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
-    
-    // Calculate if item is expiring in 3 weeks or less (including expired items)
-    final now = DateTime.now();
-    final daysUntilExpiry = item.expiryDate.difference(now).inDays;
-    final showWarning = daysUntilExpiry <= 14; // 2 weeks
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(20.0),
-          boxShadow: [
-            BoxShadow(
-              color: _primaryBlack.withOpacity(isDarkMode ? 0.1 : 0.05),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Item details - takes most of the space
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Item name
-                  Text(
-                    item.name,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  
-                  // Quantity and expiry in a single row
-                  Row(
-                    children: [
-                      // Quantity without "Count:" text
-                      Text(
-                        '${item.count} ${item.unit}',
-                        style: TextStyle(fontSize: 14, color: subtitleColor),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(width: 16),
-                      // Expiry information
-                      Text(
-                        '${TranslationHelper.t('Expires In', 'میعاد باقی')}: ${item.expiry}',
-                        style: TextStyle(fontSize: 14, color: subtitleColor),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(width: 12),
-            
-            // Warning icon only
-            if (showWarning)
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: _primaryRed,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    '!',
-                    style: TextStyle(
-                      color: _primaryWhite,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      height: 1.0,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-          ],
-        ),
+  // Reusable widget for the item card in the list - SIMPLIFIED VERSION
+Widget _buildItemCard(ExpiringItem item) {
+  final themeProvider = ThemeProvider();
+  final isDarkMode = themeProvider.darkModeEnabled;
+  final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : _primaryWhite;
+  final textColor = isDarkMode ? const Color(0xFFE1E1E1) : _primaryBlack;
+  final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
+  
+  // Calculate if item is expiring in 3 weeks or less (including expired items)
+  final now = DateTime.now();
+  final daysUntilExpiry = item.expiryDate.difference(now).inDays;
+  final showWarning = daysUntilExpiry <= 14; // 2 weeks
+  
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0), // Reduced horizontal padding
+    child: Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryBlack.withOpacity(isDarkMode ? 0.1 : 0.05),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-    );
-  }
+      child: Row(
+        children: [
+          // Item details - takes most of the space
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Item name
+                Text(
+                  item.name,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                  maxLines: 2, // Allow wrapping to 2 lines
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                
+                // Quantity and expiry - now in separate rows for better wrapping
+                // Quantity
+                Text(
+                  '${item.count} ${item.unit}',
+                  style: TextStyle(fontSize: 14, color: subtitleColor),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                // Expiry information
+                Text(
+                  '${TranslationHelper.t('Expires In', 'میعاد باقی')}: ${item.expiry}',
+                  style: TextStyle(fontSize: 14, color: subtitleColor),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(width: 12),
+          
+          // Warning icon only
+          if (showWarning)
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: _primaryRed,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '!',
+                  style: TextStyle(
+                    color: _primaryWhite,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    height: 1.0,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
 
   void _handleNavToMainShell(BuildContext context, int index) {
     if (index != 3) {

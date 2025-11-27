@@ -357,117 +357,163 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   // Widget for a single list item
-  Widget _buildInventoryItem(BuildContext context, InventoryItem item) {
-    final isDarkMode = ThemeProvider().darkModeEnabled;
-    final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
-    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
-    final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey;
-    
-    Color expiryColor = Colors.grey;
-    if (item.daysUntilExpiry != null) {
-      if (item.daysUntilExpiry! < 0) {
-        expiryColor = Colors.red;
-      } else if (item.daysUntilExpiry! <= 3) {
-        expiryColor = Colors.orange;
-      } else if (item.daysUntilExpiry! <= 7) {
-        expiryColor = Colors.yellow[700]!;
-      } else {
-        expiryColor = Colors.green;
-      }
+  // Widget for a single list item
+Widget _buildInventoryItem(BuildContext context, InventoryItem item) {
+  final isDarkMode = ThemeProvider().darkModeEnabled;
+  final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
+  final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+  final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey;
+  
+  Color expiryColor = Colors.grey;
+  if (item.daysUntilExpiry != null) {
+    if (item.daysUntilExpiry! < 0) {
+      expiryColor = Colors.red;
+    } else if (item.daysUntilExpiry! <= 3) {
+      expiryColor = Colors.orange;
+    } else if (item.daysUntilExpiry! <= 7) {
+      expiryColor = Colors.yellow[700]!;
+    } else {
+      expiryColor = Colors.green;
     }
+  }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ItemDetailScreen(item: item),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 20.0),
+    child: InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ItemDetailScreen(item: item),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name and actions row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: textColor,
+                          ),
+                          maxLines: 2, // Allow up to 2 lines
+                          overflow: TextOverflow.ellipsis, // Show ellipsis if still too long
+                        ),
+                      ),
+                      // Show category badge for "All" category view
+                      if (widget.category.toLowerCase() == 'all')
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: item.backgroundColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           child: Text(
-                            item.name,
+                            item.category,
                             style: TextStyle(
-                              fontSize: 20,
-                              color: textColor,
+                              fontSize: 12,
+                              color: item.backgroundColor,
+                              fontWeight: FontWeight.bold,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        // Show category badge for "All" category view
-                        if (widget.category.toLowerCase() == 'all')
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: item.backgroundColor.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              item.category,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: item.backgroundColor,
-                                fontWeight: FontWeight.bold,
+                      const SizedBox(width: 8),
+                      // Edit/Delete dropdown button
+                      _buildEditDeleteDropdown(item),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Quantity and expiry info - wrap to new line on small screens
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth > 300) {
+                        // Wider screen - show in single row
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                TranslationHelper.t('Quantity', 'مقدار') + ': ${item.quantity} ${item.unit}',
+                                style: TextStyle(fontSize: 14, color: subtitleColor),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ),
-                        const SizedBox(width: 8),
-                        // Edit/Delete dropdown button
-                        _buildEditDeleteDropdown(item),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          TranslationHelper.t('Quantity', 'مقدار') + ': ${item.quantity} ${item.unit}',
-                          style: TextStyle(fontSize: 14, color: subtitleColor),
-                        ),
-                        const SizedBox(width: 16),
-                        // Expiry info
-                        Text(
-                          TranslationHelper.t('Expires', 'ختم ہوتا ہے') + ': ${item.expiryDisplay}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: expiryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                TranslationHelper.t('Expires', 'ختم ہوتا ہے') + ': ${item.expiryDisplay}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: expiryColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        // Narrow screen - show in column
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              TranslationHelper.t('Quantity', 'مقدار') + ': ${item.quantity} ${item.unit}',
+                              style: TextStyle(fontSize: 14, color: subtitleColor),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              TranslationHelper.t('Expires', 'ختم ہوتا ہے') + ': ${item.expiryDisplay}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: expiryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        );
+                      }
+                    },
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -1297,7 +1343,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
                           elevation: 5,
                         ),
                         child: const Text(
-                          'Save Changes',
+                          'Save',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -1434,104 +1480,103 @@ class _CategorySearchScreenState extends State<CategorySearchScreen> {
   }
 
   Widget _buildSearchResultItem(QueryDocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    final item = InventoryItem.fromFirestore(doc);
-    
-    final isDarkMode = ThemeProvider().darkModeEnabled;
-    final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
-    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
-    final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
-    
-    Color expiryColor = Colors.grey;
-    if (item.daysUntilExpiry != null) {
-      if (item.daysUntilExpiry! < 0) {
-        expiryColor = Colors.red;
-      } else if (item.daysUntilExpiry! <= 3) {
-        expiryColor = Colors.orange;
-      } else if (item.daysUntilExpiry! <= 7) {
-        expiryColor = Colors.yellow[700]!;
-      } else {
-        expiryColor = Colors.green;
-      }
+  final data = doc.data() as Map<String, dynamic>;
+  final item = InventoryItem.fromFirestore(doc);
+  final isDarkMode = ThemeProvider().darkModeEnabled;
+  final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
+  final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+  final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
+  
+  Color expiryColor = Colors.grey;
+  if (item.daysUntilExpiry != null) {
+    if (item.daysUntilExpiry! < 0) {
+      expiryColor = Colors.red;
+    } else if (item.daysUntilExpiry! <= 3) {
+      expiryColor = Colors.orange;
+    } else if (item.daysUntilExpiry! <= 7) {
+      expiryColor = Colors.yellow[700]!;
+    } else {
+      expiryColor = Colors.green;
     }
+  }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      elevation: 2,
-      color: cardBg,
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: item.backgroundColor.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Center(
-            child: Text(
-              item.category[0].toUpperCase(),
-              style: TextStyle(
-                color: item.backgroundColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+  return Card(
+    margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+    elevation: 2,
+    color: cardBg,
+    child: ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: item.backgroundColor.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Text(
+            item.category[0].toUpperCase(),
+            style: TextStyle(
+              color: item.backgroundColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
             ),
           ),
         ),
-        title: Text(
-          data['name'] ?? 'Unknown Item',
-          style: TextStyle(fontSize: 16, color: textColor),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  '${data['quantity'] ?? ''} ${data['unit'] ?? ''}',
-                  style: TextStyle(color: subtitleColor),
-                ),
-                const SizedBox(width: 8),
-                // Show category badge for "All" search
-                if (widget.category.toLowerCase() == 'all')
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: item.backgroundColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      item.category,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: item.backgroundColor,
-                        fontWeight: FontWeight.bold,
-                      ),
+      ),
+      title: Text(
+        data['name'] ?? 'Unknown Item',
+        style: TextStyle(fontSize: 16, color: textColor),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                '${data['quantity'] ?? ''} ${data['unit'] ?? ''}',
+                style: TextStyle(color: subtitleColor),
+              ),
+              const SizedBox(width: 8),
+              // Show category badge for "All" search
+              if (widget.category.toLowerCase() == 'all')
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: item.backgroundColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    item.category,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: item.backgroundColor,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-              ],
+                ),
+            ],
+          ),
+          Text(
+            'Expires: ${item.expiryDisplay}',
+            style: TextStyle(
+              color: expiryColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
-            Text(
-              'Expires: ${item.expiryDisplay}',
-              style: TextStyle(
-                color: expiryColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ItemDetailScreen(item: item),
-            ),
-          );
-        },
+          ),
+        ],
       ),
-    );
-  }
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ItemDetailScreen(item: item),
+          ),
+        );
+      },
+    ),
+  );
+}
 
   @override
   void dispose() {
@@ -1642,64 +1687,534 @@ class ItemDetailScreen extends StatelessWidget {
     final isDarkMode = ThemeProvider().darkModeEnabled;
     final backgroundColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
     final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
-    final cardBg = isDarkMode ? const Color(0xFF2A2A2A) : Colors.white;
+    final cardBg = isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
     final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
-    
+    final surfaceColor = isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FA);
+
     return Scaffold(
       backgroundColor: backgroundColor,
       bottomNavigationBar: CustomBottomNavBar(
         onTabContentTapped: (index) {},
-        currentIndex: 0,
+        currentIndex: 1,
         navContext: context,
       ),
       appBar: AppBar(
-        backgroundColor: backgroundColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(item.name, style: TextStyle(color: textColor)),
-        iconTheme: IconThemeData(color: textColor),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Item Details',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete, color: Color.fromARGB(255, 144, 11, 9)),
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0x22FF6B6B),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF6B6B)),
+            ),
             onPressed: () => _showDeleteDialog(context, item),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Card(
-              color: cardBg,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ListTile(
-                      leading: Icon(Icons.inventory_2, size: 40, color: item.backgroundColor),
-                      title: Text(
-                        item.name,
-                        style: TextStyle(fontSize: 24, color: textColor),
-                      ),
-                      subtitle: Text(item.category, style: TextStyle(color: subtitleColor)),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDetailRow('Quantity', '${item.quantity} ${item.unit}'),
-                    _buildDetailRow('Purchase Date', item.purchaseDate ?? 'Not set'),
-                    _buildDetailRow('Expiry Date', item.expiryDate ?? 'Not set'),
-                    _buildDetailRow('Expires In', item.expiryDisplay),
-                    _buildDetailRow('Added On', 
-                      '${item.createdAt.day}/${item.createdAt.month}/${item.createdAt.year}'),
+            // Header Card with Item Info
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    item.backgroundColor.withOpacity(0.15),
+                    item.backgroundColor.withOpacity(0.05),
                   ],
                 ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: item.backgroundColor.withOpacity(0.3),
+                  width: 1,
+                ),
               ),
+              child: Column(
+                children: [
+                  // Icon and Category
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: item.backgroundColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: item.backgroundColor.withOpacity(0.3),
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.inventory_2_rounded,
+                      size: 32,
+                      color: item.backgroundColor,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Item Name
+                  Text(
+                    item.name,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                      height: 1.2,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Category Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: item.backgroundColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: item.backgroundColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      item.category.toUpperCase(),
+                      style: TextStyle(
+                        color: item.backgroundColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+
+            // Details Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Section Title
+                  Text(
+                    'ITEM INFORMATION',
+                    style: TextStyle(
+                      color: subtitleColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Details Grid
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 20,
+                    children: [
+                      _buildDetailCard(
+                        icon: Icons.scale_rounded,
+                        title: 'Quantity',
+                        value: '${item.quantity} ${item.unit}',
+                        color: const Color(0xFF4ECDC4),
+                        context: context,
+                      ),
+                      _buildDetailCard(
+                        icon: Icons.shopping_cart_rounded,
+                        title: 'Purchase Date',
+                        value: item.purchaseDate ?? 'Not set',
+                        color: const Color(0xFF45B7D1),
+                        context: context,
+                      ),
+                      _buildDetailCard(
+                        icon: Icons.calendar_today_rounded,
+                        title: 'Expiry Date',
+                        value: item.expiryDate ?? 'Not set',
+                        color: const Color(0xFF96CEB4),
+                        context: context,
+                      ),
+                      _buildDetailCard(
+                        icon: Icons.timer_rounded,
+                        title: 'Expires In',
+                        value: item.expiryDisplay,
+                        color: _getExpiryColor(item),
+                        context: context,
+                      ),
+                      _buildDetailCard(
+                        icon: Icons.add_circle_rounded,
+                        title: 'Added On',
+                        value: '${_formatDate(item.createdAt)}',
+                        color: const Color(0xFFFECA57),
+                        context: context,
+                      ),
+                      _buildDetailCard(
+                        icon: Icons.category_rounded,
+                        title: 'Category',
+                        value: item.category,
+                        color: const Color(0xFFFF9FF3),
+                        context: context,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditItemScreen(item: item),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(
+                        color: item.backgroundColor,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.edit_rounded, size: 20, color: item.backgroundColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Edit Item',
+                          style: TextStyle(
+                            color: item.backgroundColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _showDeleteDialog(context, item),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6B6B),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.delete_outline_rounded, size: 20, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildDetailCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+    required BuildContext context,
+  }) {
+    final isDarkMode = ThemeProvider().darkModeEnabled;
+    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+    final subtitleColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.grey[600];
+    
+    return SizedBox(
+      width: (MediaQuery.of(context).size.width - 80) / 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: TextStyle(
+              color: subtitleColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getExpiryColor(InventoryItem item) {
+    final days = item.daysUntilExpiry;
+    if (days == null) return const Color(0xFF95AFBA);
+    if (days < 0) return const Color(0xFFFF6B6B);
+    if (days <= 3) return const Color(0xFFFF9F43);
+    if (days <= 7) return const Color(0xFFFECA57);
+    return const Color(0xFF1DD1A1);
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    final isDarkMode = ThemeProvider().darkModeEnabled;
+    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+    final labelColor = isDarkMode ? const Color(0xFFB0B0B0) : Colors.black87;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 16, color: labelColor),
+          ),
+          Text(
+            value,
+            style: TextStyle(fontSize: 16, color: textColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context, InventoryItem item) {
+    final isDarkMode = ThemeProvider().darkModeEnabled;
+    final dialogBg = isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDarkMode ? const Color(0xFFE1E1E1) : Colors.black;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: dialogBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Warning Icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0x22FF6B6B),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 32,
+                    color: Color(0xFFFF6B6B),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Title
+                Text(
+                  'Delete Item?',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                
+                // Message
+                Text(
+                  'Are you sure you want to delete ${item.name}? This action cannot be undone.',
+                  style: TextStyle(
+                    color: Color(0xFF95AFBA),
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: BorderSide(
+                            color: isDarkMode ? const Color(0xFF3A3A3A) : Colors.grey[300]!,
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: textColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _deleteItem(context, item);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF6B6B),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteItem(BuildContext context, InventoryItem item) async {
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final user = auth.currentUser;
+    
+    if (user == null) return;
+
+    try {
+      await firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('inventory')
+          .doc(item.id)
+          .delete();
+      
+      Navigator.of(context).pop(); // Go back to previous screen
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${item.name} deleted successfully'),
+          backgroundColor: const Color(0xFF1DD1A1),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting ${item.name}: $e'),
+          backgroundColor: const Color(0xFFFF6B6B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
+  }
+}
 
   Widget _buildDetailRow(String label, String value) {
     final isDarkMode = ThemeProvider().darkModeEnabled;
@@ -1788,7 +2303,7 @@ class ItemDetailScreen extends StatelessWidget {
       );
     }
   }
-}
+
 
 // --- Usage Example ---
 class InventoryApp extends StatelessWidget {

@@ -195,7 +195,7 @@ class HomePage extends StatelessWidget {
                         elevation: 5,
                       ),
                       child: Text(
-                        TranslationHelper.t('Login as Admin', 'ایڈمن کے طور پر لاگ اِن کریں'),
+                        TranslationHelper.t('Admin Login', 'ایڈمن لاگ ان'),
                         style: TextStyle(
                           color: isDarkMode ? Colors.black : Colors.black,
                           fontSize: 20,
